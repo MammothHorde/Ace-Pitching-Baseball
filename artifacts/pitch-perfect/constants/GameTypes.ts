@@ -2,6 +2,7 @@ export type PitchType = 'fastball' | 'curveball' | 'slider' | 'changeup' | 'spli
 export type ZoneId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 export type GamePhase = 'selecting' | 'gesture' | 'result' | 'inning_break' | 'game_over';
 export type PitchOutcome = 'strike_called' | 'strike_swinging' | 'ball' | 'foul' | 'hit';
+export type PitchingStyle = 'classic' | 'total_control';
 
 export interface PitchRecord {
   type: PitchType;
@@ -30,6 +31,7 @@ export interface PitcherProfile {
   stats: PitcherStats;
   unlockedPitches: PitchType[];
   statUpgradeCounts: Record<keyof PitcherStats, number>;
+  pitchingStyle?: PitchingStyle;
 }
 
 export interface PitchResult {

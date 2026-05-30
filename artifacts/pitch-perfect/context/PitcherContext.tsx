@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { PitcherProfile, PitcherStats, PitchType } from '@/constants/GameTypes';
+import { PitcherProfile, PitcherStats, PitchingStyle, PitchType } from '@/constants/GameTypes';
 import { UPGRADE_COSTS, PITCH_UNLOCK_COSTS, getAvailablePoints } from '@/utils/gameLogic';
 
 const STORAGE_KEY = '@pitcher_profile_v1';
@@ -15,11 +15,14 @@ const DEFAULT_PROFILE: PitcherProfile = {
   stats: { speed: 1, accuracy: 1, stamina: 1, spin: 1 },
   unlockedPitches: ['fastball', 'curveball'],
   statUpgradeCounts: { speed: 0, accuracy: 0, stamina: 0, spin: 0 },
+  pitchingStyle: 'classic',
 };
 
 interface PitcherContextType {
   profile: PitcherProfile;
   isLoading: boolean;
+  pitchingStyle: PitchingStyle;
+  setPitchingStyle: (style: PitchingStyle) => Promise<void>;
   recordGameResult: (score: number) => Promise<void>;
   upgradeStat: (stat: keyof PitcherStats) => boolean;
   unlockPitch: (pitch: PitchType) => boolean;
@@ -40,7 +43,11 @@ export function PitcherProvider({ children }: { children: React.ReactNode }) {
       if (data) {
         try {
           const saved = JSON.parse(data) as PitcherProfile;
-          setProfile(saved);
+          setProfile({
+            ...DEFAULT_PROFILE,
+            ...saved,
+            pitchingStyle: saved.pitchingStyle ?? 'classic',
+          });
         } catch {
           setProfile(DEFAULT_PROFILE);
         }
@@ -52,6 +59,14 @@ export function PitcherProvider({ children }: { children: React.ReactNode }) {
   const persist = useCallback(async (updated: PitcherProfile) => {
     setProfile(updated);
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  }, []);
+
+  const setPitchingStyle = useCallback(async (style: PitchingStyle) => {
+    setProfile(prev => {
+      const updated: PitcherProfile = { ...prev, pitchingStyle: style };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
   }, []);
 
   const recordGameResult = useCallback(async (score: number) => {
@@ -128,6 +143,8 @@ export function PitcherProvider({ children }: { children: React.ReactNode }) {
     <PitcherContext.Provider value={{
       profile,
       isLoading,
+      pitchingStyle: profile.pitchingStyle ?? 'classic',
+      setPitchingStyle,
       recordGameResult,
       upgradeStat,
       unlockPitch,

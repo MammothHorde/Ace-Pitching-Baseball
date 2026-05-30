@@ -12,7 +12,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { PitcherStats, PitchType } from '@/constants/GameTypes';
+import { PitcherStats, PitchingStyle, PitchType } from '@/constants/GameTypes';
 import { PITCH_INFO, PITCH_UNLOCK_COSTS, UPGRADE_COSTS } from '@/utils/gameLogic';
 import { usePitcher } from '@/context/PitcherContext';
 
@@ -31,6 +31,7 @@ export default function UpgradeScreen() {
   const insets = useSafeAreaInsets();
   const {
     profile, availablePoints,
+    pitchingStyle, setPitchingStyle,
     upgradeStat, unlockPitch,
     canUpgradeStat, canUnlockPitch,
   } = usePitcher();
@@ -56,6 +57,12 @@ export default function UpgradeScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast(`${PITCH_INFO[pitch].name} unlocked!`);
     }
+  }
+
+  async function doSetPitchingStyle(style: PitchingStyle) {
+    await setPitchingStyle(style);
+    Haptics.selectionAsync();
+    showToast(style === 'total_control' ? 'Total Control mode on!' : 'Classic mode on!');
   }
 
   return (
@@ -197,6 +204,47 @@ export default function UpgradeScreen() {
           })}
         </View>
 
+        <Text style={styles.sectionTitle}>PITCHING STYLE</Text>
+
+        <View style={styles.styleCard}>
+          <Text style={styles.styleCardDesc}>
+            Choose how you throw in-game. Classic uses a power meter + accuracy tap.
+            Total Control uses gesture swipes for each pitch type.
+          </Text>
+          <View style={styles.styleToggleRow}>
+            {(['classic', 'total_control'] as PitchingStyle[]).map(style => {
+              const isActive = pitchingStyle === style;
+              return (
+                <TouchableOpacity
+                  key={style}
+                  style={[styles.styleOption, isActive && styles.styleOptionActive]}
+                  onPress={() => doSetPitchingStyle(style)}
+                  activeOpacity={0.75}
+                >
+                  <MaterialCommunityIcons
+                    name={style === 'classic' ? 'gauge' : 'gesture-swipe-down'}
+                    size={20}
+                    color={isActive ? '#0B1E3D' : 'rgba(255,255,255,0.55)'}
+                  />
+                  <Text style={[styles.styleOptionText, isActive && styles.styleOptionTextActive]}>
+                    {style === 'classic' ? 'Classic' : 'Total Control'}
+                  </Text>
+                  {isActive && (
+                    <MaterialCommunityIcons name="check-circle" size={14} color="#0B1E3D" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {pitchingStyle === 'total_control' && (
+            <View style={styles.tcHintBox}>
+              <Text style={styles.tcHintText}>
+                Swipe to match the ghost guide for each pitch. Speed matters for Changeup and Fastball!
+              </Text>
+            </View>
+          )}
+        </View>
+
         <TouchableOpacity
           style={styles.playBtn}
           onPress={() => router.replace('/game')}
@@ -328,6 +376,56 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   unlockCost: { color: '#0B1E3D', fontSize: 10, fontWeight: '800' },
+  styleCard: {
+    backgroundColor: 'rgba(22,40,71,0.9)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    gap: 12,
+  },
+  styleCardDesc: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+  styleToggleRow: { flexDirection: 'row', gap: 10 },
+  styleOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    paddingVertical: 13,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  styleOptionActive: {
+    backgroundColor: '#FFCC00',
+    borderColor: '#FFCC00',
+  },
+  styleOptionText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  styleOptionTextActive: { color: '#0B1E3D' },
+  tcHintBox: {
+    backgroundColor: 'rgba(255,204,0,0.08)',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,204,0,0.2)',
+  },
+  tcHintText: {
+    color: 'rgba(255,204,0,0.75)',
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '600',
+  },
   playBtn: { borderRadius: 18, overflow: 'hidden', marginTop: 16 },
   playBtnGrad: {
     flexDirection: 'row',

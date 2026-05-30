@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
   Platform,
@@ -28,6 +28,7 @@ import {
   isPerfectAccuracy,
   isPerfectPower,
 } from '@/utils/gameLogic';
+import { gestureQualityLabel } from '@/utils/gestureTemplates';
 import { usePitcher } from '@/context/PitcherContext';
 import { StadiumBackground } from '@/components/StadiumBackground';
 import { BatterScene } from '@/components/BatterScene';
@@ -38,6 +39,8 @@ import { PitchTypeSelector } from '@/components/PitchTypeSelector';
 import { GameHUD } from '@/components/GameHUD';
 import { PitchResultOverlay } from '@/components/PitchResultOverlay';
 import { SequenceBonus } from '@/components/SequenceBonus';
+import { GestureInputPanel } from '@/components/GestureInputPanel';
+import { GestureQualityLabel } from '@/components/GestureQualityLabel';
 
 // ─── Layout constants ────────────────────────────────────────────────────────
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -62,7 +65,7 @@ function getZoneCenter(zone: ZoneId) {
 
 export default function GameScreen() {
   const insets = useSafeAreaInsets();
-  const { profile, recordGameResult } = usePitcher();
+  const { profile, pitchingStyle, recordGameResult } = usePitcher();
 
   const [phase, setPhase]                       = useState<GamePhase>('selecting');
   const [inning, setInning]                     = useState(1);
@@ -80,6 +83,8 @@ export default function GameScreen() {
   const [showBallFlight, setShowBallFlight]     = useState(false);
   const [ballTarget, setBallTarget]             = useState({ x: SCREEN_W / 2, y: ZONE_TOP + 60 });
   const [batterIndex, setBatterIndex]           = useState(0);
+  const [gestureLabel, setGestureLabel]         = useState('');
+  const [showGestureLabel, setShowGestureLabel] = useState(false);
 
   // Stale-closure-safe refs
   const phaseRef           = useRef<GamePhase>('selecting');
@@ -100,6 +105,8 @@ export default function GameScreen() {
   const topOffset = (Platform.OS === 'web' ? 67 : insets.top) + 82;
   const bottomPad = Platform.OS === 'web' ? 34 : insets.bottom;
 
+  const isTotalControl = pitchingStyle === 'total_control';
+
   useEffect(() => () => {
     if (resultTimeoutRef.current)   clearTimeout(resultTimeoutRef.current);
     if (ballFlightRef.current)      clearTimeout(ballFlightRef.current);
@@ -115,7 +122,8 @@ export default function GameScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }
 
-  function handleGestureComplete(power: number, accuracy: number) {
+  // Classic mode: GestureCanvas calls back with (power, accuracy)
+  function handleCanvasComplete(power: number, accuracy: number) {
     const zone = selectedZoneRef.current!;
     const target = getZoneCenter(zone);
     setBallTarget(target);
@@ -125,6 +133,43 @@ export default function GameScreen() {
       resolvePitch(power, accuracy);
     }, 420);
   }
+
+  // Total Control mode: GestureInputPanel calls back with gestureScore
+  const handleTCGestureComplete = useCallback(
+    ({ gestureScore }: { gestureScore: number; speedPxPerMs: number }) => {
+      if (phaseRef.current !== 'selecting') return;
+
+      phaseRef.current = 'gesture';
+      setPhase('gesture');
+
+      const label = gestureQualityLabel(gestureScore);
+      setGestureLabel(label);
+      setShowGestureLabel(true);
+
+      // Also trigger ball flight for visual continuity
+      const zone = selectedZoneRef.current!;
+      if (zone) {
+        const target = getZoneCenter(zone);
+        setBallTarget(target);
+        setShowBallFlight(true);
+      }
+
+      Haptics.impactAsync(
+        gestureScore >= 0.78
+          ? Haptics.ImpactFeedbackStyle.Heavy
+          : gestureScore >= 0.50
+          ? Haptics.ImpactFeedbackStyle.Medium
+          : Haptics.ImpactFeedbackStyle.Light,
+      );
+
+      setTimeout(() => {
+        setShowGestureLabel(false);
+        setShowBallFlight(false);
+        setTimeout(() => resolvePitch(gestureScore, gestureScore), 200);
+      }, 900);
+    },
+    [],
+  );
 
   function resolvePitch(powerScore: number, accuracyScore: number) {
     const zone      = selectedZoneRef.current!;
@@ -240,6 +285,9 @@ export default function GameScreen() {
 
   // ─── Render ──────────────────────────────────────────────────────────────
 
+  const showClassicControls = !isTotalControl;
+  const showGestureControls = isTotalControl;
+
   return (
     <View style={styles.root}>
       <StadiumBackground />
@@ -298,7 +346,7 @@ export default function GameScreen() {
 
       {/* ── BOTTOM PANEL ─────────────────────────────────── */}
       <View style={[styles.bottomPanel, { paddingBottom: bottomPad + 8 }]}>
-        {/* Pitch type selector — shown while selecting or before gesture */}
+        {/* Pitch type selector — shown while selecting */}
         {(phase === 'selecting') && (
           <PitchTypeSelector
             arsenal={profile.unlockedPitches}
@@ -315,8 +363,9 @@ export default function GameScreen() {
 
         {/* Control area */}
         <View style={styles.controlArea}>
-          {/* SELECTING: show pitch button or step prompt */}
-          {phase === 'selecting' && canPitch && (
+
+          {/* ── CLASSIC MODE ── */}
+          {showClassicControls && phase === 'selecting' && canPitch && (
             <TouchableOpacity
               onPress={startGesture}
               activeOpacity={0.82}
@@ -333,7 +382,7 @@ export default function GameScreen() {
             </TouchableOpacity>
           )}
 
-          {phase === 'selecting' && !canPitch && (
+          {showClassicControls && phase === 'selecting' && !canPitch && (
             <View style={styles.promptBox}>
               <Text style={styles.promptText}>
                 {!selectedZone
@@ -343,15 +392,41 @@ export default function GameScreen() {
             </View>
           )}
 
-          {/* GESTURE: show drawing canvas */}
-          {phase === 'gesture' && selectedPitch && (
+          {showClassicControls && phase === 'gesture' && selectedPitch && (
             <GestureCanvas
               pitchType={selectedPitch}
-              onComplete={handleGestureComplete}
+              onComplete={handleCanvasComplete}
             />
           )}
 
-          {/* RESULT: waiting for next batter */}
+          {/* ── TOTAL CONTROL MODE ── */}
+          {showGestureControls && phase === 'selecting' && (
+            <>
+              {canPitch ? (
+                <GestureInputPanel
+                  pitchType={selectedPitch!}
+                  enabled={true}
+                  onGestureComplete={handleTCGestureComplete}
+                />
+              ) : (
+                <View style={styles.promptBox}>
+                  <Text style={styles.promptText}>
+                    {!selectedZone
+                      ? '☝️  Tap a zone in the field above'
+                      : '👇  Now choose your pitch type'}
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
+
+          {showGestureControls && phase === 'gesture' && (
+            <View style={styles.resultWait}>
+              <Text style={styles.resultWaitText}>Delivering…</Text>
+            </View>
+          )}
+
+          {/* ── SHARED ── */}
           {phase === 'result' && (
             <View style={styles.resultWait}>
               <Text style={styles.resultWaitText}>Next batter up…</Text>
@@ -362,6 +437,8 @@ export default function GameScreen() {
 
       {/* ── OVERLAYS ─────────────────────────────────────── */}
       {lastResult && <PitchResultOverlay result={lastResult} visible={showResult} />}
+
+      <GestureQualityLabel label={gestureLabel} visible={showGestureLabel} />
 
       {showInningBreak && (
         <View style={styles.inningOverlay}>
