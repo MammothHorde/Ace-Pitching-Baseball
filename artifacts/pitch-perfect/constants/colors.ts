@@ -1,0 +1,31 @@
+const colors = {
+  light: {
+    text: "#FFFFFF",
+    tint: "#FF4757",
+    background: "#0B1E3D",
+    foreground: "#FFFFFF",
+    card: "#162847",
+    cardForeground: "#FFFFFF",
+    primary: "#FF4757",
+    primaryForeground: "#FFFFFF",
+    secondary: "#1E3A5F",
+    secondaryForeground: "#FFFFFF",
+    muted: "#1A2F50",
+    mutedForeground: "#7B8FA8",
+    accent: "#FFCC00",
+    accentForeground: "#0B1E3D",
+    destructive: "#FF4757",
+    destructiveForeground: "#FFFFFF",
+    border: "#253C60",
+    input: "#1E3A5F",
+    success: "#2ED573",
+    grass: "#1B5E3B",
+    dirt: "#8B5A2B",
+    sky: "#1A3A6B",
+    stadiumLight: "#FFE066",
+    sequenceGlow: "#FF9800",
+  },
+  radius: 16,
+};
+
+export default colors;
