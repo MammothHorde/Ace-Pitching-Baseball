@@ -12,8 +12,16 @@ export function StadiumBackground() {
         style={styles.image}
         resizeMode="cover"
       />
+      {/* Top: let stadium show through. Bottom: darken for UI panel. */}
       <LinearGradient
-        colors={['rgba(11,30,61,0.25)', 'rgba(11,30,61,0.05)', 'rgba(11,30,61,0.75)']}
+        colors={[
+          'rgba(11,30,61,0.30)',
+          'rgba(11,30,61,0.10)',
+          'rgba(11,30,61,0.40)',
+          'rgba(11,30,61,0.82)',
+          'rgba(11,30,61,0.96)',
+        ]}
+        locations={[0, 0.20, 0.45, 0.62, 1]}
         style={StyleSheet.absoluteFill}
       />
     </View>

@@ -1,0 +1,45 @@
+Great question — the camera/POV and visual layout are just as important as the mechanics. Let me search for how MLB 2K actually presented it visually.Good — here's a thorough breakdown you can hand directly to Replit. There are two distinct parts: the **camera/POV** and the **on-screen HUD layout**.
+
+---
+
+## The Camera Angle — "Center Field / Pitcher Cam"
+
+MLB 2K10 gave you three camera options — Pitcher, Pitcher 2, and Pitcher 3. The default "Pitcher" is a higher-angle shot that gets more of the mound and basepaths into frame. The most common and iconic view is essentially a **broadcast-style center field camera** — positioned behind and slightly above the pitcher, looking toward home plate and the catcher.
+
+A dead-center field look provides a truer perspective on how pitches break. Alternatively, you can pitch from the catcher's perspective — facing the incoming pitch.
+
+For a **phone app**, the standard choice is the **pitcher-behind view** (center field style), because it makes the strike zone visible and gives the player a natural left-to-right sense of where the pitch is going.
+
+---
+
+## How to Describe the Full Visual Workflow to Replit
+
+Here's a prompt you can paste in:
+
+---
+
+> **Visual layout and camera POV for the pitching screen:**
+>
+> **Camera angle:** The game is viewed from a **broadcast-style center field perspective** — the camera sits behind and slightly above the pitcher, looking down the mound toward home plate. The batter stands in the batter's box in the middle distance, and the catcher crouches behind the plate. The field stretches out in the background. This is a fixed 2.5D or illustrated perspective (not full 3D), appropriate for a mobile game.
+>
+> **Strike zone overlay:** A rectangular grid (3 columns × 3 rows = 9 zones) floats over the catcher/home plate area in the mid-ground. This is always visible while the player is selecting where to throw. The player taps or drags a targeting reticle/cursor into one of the 9 zones to aim the pitch before throwing.
+>
+> **Pitch selection UI:** At the bottom of the screen, a horizontal row of pitch type buttons (e.g. Fastball, Curveball, Slider, Changeup) is displayed. The player taps one to select it. The selected pitch highlights, and a small diagram or arrow hint appears showing what swipe gesture is required.
+>
+> **Gesture area:** The bottom half of the screen is the gesture input zone. After selecting a pitch and aiming, the player performs the required swipe gesture here. A faint ghost/guide of the gesture shape may appear briefly as a hint, then disappears for advanced players.
+>
+> **Power/accuracy meter:** A vertical or circular meter appears on the side of the screen while the gesture is being performed. It fills as the gesture is executed. A highlighted "sweet spot" band in the meter represents perfect timing. Releasing within the sweet spot = max velocity and accuracy.
+>
+> **Ball flight:** After the gesture is completed, the camera follows a brief animation of the ball traveling from the mound toward the plate, with the pitch curving or moving according to which pitch type was thrown and how well the gesture was executed.
+>
+> **Result display:** A small text popup briefly shows the result — e.g. "Strike!", "Ball", "Hit!", "Strikeout!" — overlaid on the scene before resetting for the next pitch.
+>
+> **HUD elements (always visible):**
+> - Count display (Balls–Strikes–Outs) top center
+> - Inning and score top corners
+> - Pitcher stamina bar (depletes over the game)
+> - Current batter name/stats strip along the bottom edge
+
+---
+
+This gives Replit a complete picture of every layer — camera, zones, gestures, meters, and feedback. Want me to also sketch out a visual wireframe of the pitching screen so you can attach it as a reference image?

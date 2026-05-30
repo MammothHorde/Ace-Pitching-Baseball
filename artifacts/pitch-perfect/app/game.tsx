@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Dimensions,
   PanResponder,
   Platform,
   StyleSheet,
@@ -30,6 +31,8 @@ import {
 } from '@/utils/gameLogic';
 import { usePitcher } from '@/context/PitcherContext';
 import { StadiumBackground } from '@/components/StadiumBackground';
+import { BatterScene } from '@/components/BatterScene';
+import { BallFlight } from '@/components/BallFlight';
 import { StrikeZone } from '@/components/StrikeZone';
 import { PowerMeter } from '@/components/PowerMeter';
 import { AccuracyMeter } from '@/components/AccuracyMeter';
@@ -37,6 +40,27 @@ import { PitchTypeSelector } from '@/components/PitchTypeSelector';
 import { GameHUD } from '@/components/GameHUD';
 import { PitchResultOverlay } from '@/components/PitchResultOverlay';
 import { SequenceBonus } from '@/components/SequenceBonus';
+
+// ---- Layout constants ----
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+const SCENE_H = Math.min(SCREEN_H * 0.52, 440);
+const ZONE_CELL_W = 60;
+const ZONE_CELL_H = 40;
+const ZONE_W = ZONE_CELL_W * 3;  // 180
+const ZONE_LEFT = (SCREEN_W - ZONE_W) / 2;
+const ZONE_TOP = SCENE_H * 0.43;
+const BALL_FROM_X = SCREEN_W / 2;
+const BALL_FROM_Y = SCENE_H * 0.88;
+
+const ZONE_COL_MAP: Record<ZoneId, number> = { 1:0, 2:1, 3:2, 4:0, 5:1, 6:2, 7:0, 8:1, 9:2 };
+const ZONE_ROW_MAP: Record<ZoneId, number> = { 1:0, 2:0, 3:0, 4:1, 5:1, 6:1, 7:2, 8:2, 9:2 };
+
+function getZoneCenter(zone: ZoneId): { x: number; y: number } {
+  return {
+    x: ZONE_LEFT + ZONE_COL_MAP[zone] * ZONE_CELL_W + ZONE_CELL_W / 2,
+    y: ZONE_TOP + ZONE_ROW_MAP[zone] * ZONE_CELL_H + ZONE_CELL_H / 2,
+  };
+}
 
 export default function GameScreen() {
   const insets = useSafeAreaInsets();
@@ -57,6 +81,8 @@ export default function GameScreen() {
   const [showResult, setShowResult] = useState(false);
   const [showInningBreak, setShowInningBreak] = useState(false);
   const [justFinishedInning, setJustFinishedInning] = useState(1);
+  const [showBallFlight, setShowBallFlight] = useState(false);
+  const [ballFlightTarget, setBallFlightTarget] = useState({ x: SCREEN_W / 2, y: ZONE_TOP + 60 });
 
   // Refs for stale-closure-safe callback access
   const phaseRef = useRef<GamePhase>('selecting');
@@ -74,19 +100,21 @@ export default function GameScreen() {
   const accuracyIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lockedPowerRef = useRef(0);
   const resultTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ballFlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inningBreakTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const powerFillDuration = 1500 + profile.stats.stamina * 200;
   const accuracyCycleDuration = 600 + profile.stats.accuracy * 100;
   const canPitch = !!selectedZone && !!selectedPitch && phase === 'selecting';
   const { multiplier: seqMult, label: seqLabel } = calculateSequenceMultiplier(pitchHistory);
-  const topOffset = (Platform.OS === 'web' ? 67 : insets.top) + 90;
+  const topOffset = (Platform.OS === 'web' ? 67 : insets.top) + 82;
   const bottomPad = Platform.OS === 'web' ? 34 : insets.bottom;
 
   useEffect(() => () => {
     if (powerIntervalRef.current) clearInterval(powerIntervalRef.current);
     if (accuracyIntervalRef.current) clearInterval(accuracyIntervalRef.current);
     if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
+    if (ballFlightTimeoutRef.current) clearTimeout(ballFlightTimeoutRef.current);
     if (inningBreakTimeoutRef.current) clearTimeout(inningBreakTimeoutRef.current);
   }, []);
 
@@ -98,7 +126,6 @@ export default function GameScreen() {
       !selectedZoneRef.current ||
       !selectedPitchRef.current
     ) return;
-
     phaseRef.current = 'power';
     setPhase('power');
     setPowerLevel(0);
@@ -137,7 +164,6 @@ export default function GameScreen() {
     setPhase('accuracy');
     accuracyStartTimeRef.current = Date.now();
     const cycle = accuracyCycleDuration;
-
     accuracyIntervalRef.current = setInterval(() => {
       const elapsed = Date.now() - accuracyStartTimeRef.current;
       const t = (elapsed % cycle) / cycle;
@@ -158,7 +184,18 @@ export default function GameScreen() {
     const accuracyScore = 1 - Math.abs(pos - 0.5) * 2;
     setAccuracyPos(pos);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    resolvePitch(lockedPowerRef.current, accuracyScore);
+
+    // Show ball flight toward selected zone, then resolve
+    const zone = selectedZoneRef.current!;
+    const target = getZoneCenter(zone);
+    setBallFlightTarget(target);
+    setShowBallFlight(true);
+
+    const power = lockedPowerRef.current;
+    ballFlightTimeoutRef.current = setTimeout(() => {
+      setShowBallFlight(false);
+      resolvePitch(power, accuracyScore);
+    }, 420);
   }
 
   function resolvePitch(powerScore: number, accuracyScore: number) {
@@ -285,7 +322,7 @@ export default function GameScreen() {
     setPhase('selecting');
   }
 
-  // PanResponder with ref-forwarding to prevent stale closures
+  // PanResponder — ref-forwarding to prevent stale closures
   const _startPowerRef = useRef<() => void>(() => {});
   const _stopPowerRef = useRef<() => void>(() => {});
   _startPowerRef.current = startPower;
@@ -307,8 +344,55 @@ export default function GameScreen() {
 
   return (
     <View style={styles.root}>
+      {/* Full-screen stadium background */}
       <StadiumBackground />
 
+      {/* ── SCENE AREA: batter/catcher scene + floating strike zone ── */}
+      <View style={[styles.sceneArea, { height: SCENE_H }]}>
+        {/* SVG cartoon batter/catcher/field */}
+        <BatterScene />
+
+        {/* Sequence combo badge (above zone) */}
+        <View style={[styles.seqInScene, { top: topOffset + 4 }]}>
+          <SequenceBonus multiplier={seqMult} label={seqLabel} />
+        </View>
+
+        {/* Strike zone floating over the plate area */}
+        <View
+          style={[
+            styles.zoneOverlay,
+            {
+              top: ZONE_TOP,
+              left: ZONE_LEFT,
+              width: ZONE_W,
+              opacity: phase === 'power' || phase === 'result' ? 0.5 : 1,
+            },
+          ]}
+        >
+          <StrikeZone
+            compact
+            selectedZone={selectedZone}
+            onSelectZone={zone => {
+              if (phase !== 'selecting') return;
+              selectedZoneRef.current = zone;
+              setSelectedZone(zone);
+              Haptics.selectionAsync();
+            }}
+            disabled={phase !== 'selecting'}
+          />
+        </View>
+
+        {/* Ball flight animation */}
+        <BallFlight
+          visible={showBallFlight}
+          fromX={BALL_FROM_X}
+          fromY={BALL_FROM_Y}
+          toX={ballFlightTarget.x}
+          toY={ballFlightTarget.y}
+        />
+      </View>
+
+      {/* ── HUD (rendered over scene, top absolute) ── */}
       <GameHUD
         score={score}
         inning={inning}
@@ -318,20 +402,8 @@ export default function GameScreen() {
         sequenceMultiplier={seqMult}
       />
 
-      <View style={[styles.content, { paddingTop: topOffset, paddingBottom: bottomPad + 12 }]}>
-        <SequenceBonus multiplier={seqMult} label={seqLabel} />
-
-        <StrikeZone
-          selectedZone={selectedZone}
-          onSelectZone={zone => {
-            if (phase !== 'selecting') return;
-            selectedZoneRef.current = zone;
-            setSelectedZone(zone);
-            Haptics.selectionAsync();
-          }}
-          disabled={phase !== 'selecting'}
-        />
-
+      {/* ── BOTTOM PANEL: pitch type + controls ── */}
+      <View style={[styles.bottomPanel, { paddingBottom: bottomPad + 8 }]}>
         <PitchTypeSelector
           arsenal={profile.unlockedPitches}
           selectedPitch={selectedPitch}
@@ -362,8 +434,8 @@ export default function GameScreen() {
                 <View style={styles.promptBox}>
                   <Text style={styles.promptText}>
                     {!selectedZone
-                      ? '☝️  Tap a zone in the strike zone above'
-                      : '👇  Now choose your pitch type'}
+                      ? '☝️  Tap a zone on the field above'
+                      : '👇  Pick your pitch type'}
                   </Text>
                 </View>
               )}
@@ -385,14 +457,15 @@ export default function GameScreen() {
             </TouchableOpacity>
           )}
 
-          {phase === 'result' && (
+          {(phase === 'result') && (
             <View style={styles.resultWait}>
-              <Text style={styles.resultWaitText}>Getting ready…</Text>
+              <Text style={styles.resultWaitText}>Next batter up…</Text>
             </View>
           )}
         </View>
       </View>
 
+      {/* ── OVERLAYS ── */}
       {lastResult && (
         <PitchResultOverlay result={lastResult} visible={showResult} />
       )}
@@ -413,19 +486,50 @@ export default function GameScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0B1E3D' },
-  content: { flex: 1, gap: 10, justifyContent: 'space-between' },
+
+  // Scene area
+  sceneArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    overflow: 'hidden',
+  },
+  zoneOverlay: {
+    position: 'absolute',
+  },
+  seqInScene: {
+    position: 'absolute',
+    alignSelf: 'center',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 5,
+  },
+
+  // Bottom panel
+  bottomPanel: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    top: SCENE_H,
+    paddingTop: 8,
+    paddingHorizontal: 14,
+    gap: 8,
+    justifyContent: 'space-between',
+  },
   controlArea: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    minHeight: 110,
+    minHeight: 90,
   },
-  pitchZone: { borderRadius: 20, overflow: 'hidden', minHeight: 80 },
+  pitchZone: { borderRadius: 20, overflow: 'hidden', minHeight: 72 },
   pitchBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 22,
+    paddingVertical: 20,
     gap: 10,
     borderRadius: 20,
   },
@@ -433,7 +537,7 @@ const styles = StyleSheet.create({
   promptBox: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 22,
+    paddingVertical: 20,
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 20,
     borderWidth: 1,
@@ -445,17 +549,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  meterBox: { backgroundColor: 'rgba(11,30,61,0.85)', borderRadius: 20, padding: 20 },
+  meterBox: {
+    backgroundColor: 'rgba(11,30,61,0.90)',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
   accuracyZone: {
     flex: 1,
     justifyContent: 'center',
-    backgroundColor: 'rgba(11,30,61,0.85)',
+    backgroundColor: 'rgba(11,30,61,0.90)',
     borderRadius: 20,
     padding: 20,
-    minHeight: 110,
+    minHeight: 100,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
-  resultWait: { alignItems: 'center', justifyContent: 'center', paddingVertical: 20 },
-  resultWaitText: { color: 'rgba(255,255,255,0.35)', fontSize: 13, fontWeight: '600' },
+  resultWait: { alignItems: 'center', justifyContent: 'center', paddingVertical: 16 },
+  resultWaitText: { color: 'rgba(255,255,255,0.3)', fontSize: 13, fontWeight: '600' },
+
+  // Inning break overlay
   inningOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(11,30,61,0.96)',

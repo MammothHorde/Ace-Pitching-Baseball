@@ -1,0 +1,46 @@
+The mechanic you're thinking of is called **"Total Control Pitching"** — that's the official name 2K Sports used for it starting with MLB 2K10.
+
+Here's a breakdown of what it involves and how to describe it to Replit AI:
+
+---
+
+## What "Total Control Pitching" Is
+
+Pitching is controlled by selecting a pitch type and then matching it to a gesture on the right analog stick. The accuracy and speed of the pitch are both determined by the gesture and the pitcher's ratings.
+
+More specifically, each pitch requires a specific analog gesture that must be performed with correct timing to maximize its effectiveness. If the timing is off or the gesture is inaccurate, the pitch loses potency and becomes easier to hit.
+
+On a phone, the analog stick gestures translate to **touch swipe gestures** on screen.
+
+---
+
+## How to Describe It to Replit AI
+
+Here's a prompt you can paste directly into Replit's AI:
+
+---
+
+> **Implement a "Total Control Pitching" system inspired by the MLB 2K series.**
+>
+> The mechanic works like this:
+> 1. **Pitch selection** — The player first selects a pitch type (fastball, curveball, slider, changeup, etc.) from a menu or button layout.
+> 2. **Gesture input** — Each pitch type is mapped to a unique finger-swipe gesture on the screen (e.g., fastball = straight down swipe, curveball = arc left, slider = diagonal, etc.).
+> 3. **Timing & accuracy meter** — As the player performs the gesture, a power/accuracy meter fills. Releasing or completing the gesture at the right moment determines pitch speed and location. Too early = weak pitch. Too late or sloppy = wild pitch.
+> 4. **Aim** — Before or during the gesture, the player uses a drag or tap to aim within the strike zone.
+> 5. **Outcome** — A well-executed gesture + good timing = the pitch goes where intended with full velocity. A poor gesture = the pitch misses the zone or hangs in the strike zone (easy to hit).
+>
+> Use touch event listeners (`touchstart`, `touchmove`, `touchend`) to detect swipe direction, speed, and accuracy. Compare the swipe against the expected gesture pattern for the selected pitch type and calculate a deviation score to determine pitch quality.
+
+---
+
+## Gesture-to-Pitch Mapping Example to Give Replit
+
+| Pitch | Touch Gesture |
+|---|---|
+| Fastball | Straight swipe down |
+| Curveball | Circular arc (top → left → down) |
+| Slider | Diagonal swipe (down-right) |
+| Changeup | Slow straight-down swipe |
+| Sinker | Down then slight left curve |
+
+This gives Replit enough specificity to build the gesture detection logic. Want me to scaffold the actual gesture detection code to get you started?
