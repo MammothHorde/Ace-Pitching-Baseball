@@ -79,6 +79,7 @@ export default function GameScreen() {
   const [justFinishedInning, setJustFinished]   = useState(1);
   const [showBallFlight, setShowBallFlight]     = useState(false);
   const [ballTarget, setBallTarget]             = useState({ x: SCREEN_W / 2, y: ZONE_TOP + 60 });
+  const [batterIndex, setBatterIndex]           = useState(0);
 
   // Stale-closure-safe refs
   const phaseRef           = useRef<GamePhase>('selecting');
@@ -234,6 +235,7 @@ export default function GameScreen() {
     selectedPitchRef.current = null; setSelectedPitch(null);
     phaseRef.current         = 'selecting';
     setPhase('selecting');
+    setBatterIndex(Math.floor(Math.random() * 3));
   }
 
   // ─── Render ──────────────────────────────────────────────────────────────
@@ -244,7 +246,7 @@ export default function GameScreen() {
 
       {/* ── SCENE (upper portion) ─────────────────────────── */}
       <View style={[styles.sceneArea, { height: SCENE_H }]}>
-        <BatterScene />
+        <BatterScene batterIndex={batterIndex} />
 
         {/* Sequence combo badge */}
         <View style={[styles.seqWrap, { top: topOffset + 4 }]}>
