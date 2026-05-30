@@ -57,10 +57,10 @@ export function BallFlight({ visible, fromX, fromY, toX, toY }: Props) {
 
   return (
     <Animated.View
-      pointerEvents="none"
       style={[
         styles.ball,
         {
+          pointerEvents: 'none',
           opacity,
           transform: [
             { translateX: animX },

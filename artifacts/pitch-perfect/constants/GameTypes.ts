@@ -1,6 +1,6 @@
 export type PitchType = 'fastball' | 'curveball' | 'slider' | 'changeup' | 'splitter' | 'cutter';
 export type ZoneId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
-export type GamePhase = 'selecting' | 'power' | 'accuracy' | 'result' | 'inning_break' | 'game_over';
+export type GamePhase = 'selecting' | 'gesture' | 'result' | 'inning_break' | 'game_over';
 export type PitchOutcome = 'strike_called' | 'strike_swinging' | 'ball' | 'foul' | 'hit';
 
 export interface PitchRecord {
