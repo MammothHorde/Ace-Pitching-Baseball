@@ -5,7 +5,6 @@ import {
   Platform,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -120,16 +119,31 @@ export default function GameScreen() {
   const lockedPowerRef       = useRef(0);
   const _startPowerRef       = useRef<() => void>(() => {});
   const _stopPowerRef        = useRef<() => void>(() => {});
+  const _lockAccuracyRef     = useRef<() => void>(() => {});
 
-  const pitchPanResponder = useRef(
+  // Single screen-level touch handler. Children (zone grid, pitch selector,
+  // HUD buttons) claim the responder first via bubbling, so selection taps
+  // still work; contact on any other area is routed here by phase.
+  const screenPanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () =>
-        phaseRef.current === 'selecting' &&
-        !!selectedZoneRef.current &&
-        !!selectedPitchRef.current,
-      onPanResponderGrant: () => _startPowerRef.current(),
-      onPanResponderRelease: () => _stopPowerRef.current(),
-      onPanResponderTerminate: () => _stopPowerRef.current(),
+      onStartShouldSetPanResponder: () => {
+        const p = phaseRef.current;
+        if (p === 'selecting') {
+          return !!selectedZoneRef.current && !!selectedPitchRef.current;
+        }
+        return p === 'power' || p === 'accuracy';
+      },
+      onPanResponderGrant: () => {
+        const p = phaseRef.current;
+        if (p === 'selecting') _startPowerRef.current();
+        else if (p === 'accuracy') _lockAccuracyRef.current();
+      },
+      onPanResponderRelease: () => {
+        if (phaseRef.current === 'power') _stopPowerRef.current();
+      },
+      onPanResponderTerminate: () => {
+        if (phaseRef.current === 'power') _stopPowerRef.current();
+      },
     }),
   ).current;
 
@@ -353,13 +367,14 @@ export default function GameScreen() {
   }
 
   // PanResponder with ref-forwarding to prevent stale closures
-  _startPowerRef.current = startPower;
-  _stopPowerRef.current  = stopPower;
+  _startPowerRef.current   = startPower;
+  _stopPowerRef.current    = stopPower;
+  _lockAccuracyRef.current = lockAccuracy;
 
   // ─── Render ──────────────────────────────────────────────────────────────
 
   return (
-    <View style={styles.root}>
+    <View style={styles.root} {...screenPanResponder.panHandlers}>
       <StadiumBackground />
 
       {/* ── SCENE (upper portion) ─────────────────────────── */}
@@ -440,7 +455,7 @@ export default function GameScreen() {
         <View style={styles.controlArea}>
 
           {(phase === 'selecting' || phase === 'power') && (
-            <View {...pitchPanResponder.panHandlers} style={styles.pitchZone}>
+            <View style={styles.pitchZone}>
               {phase === 'selecting' && canPitch && (
                 <LinearGradient
                   colors={['#FF6B6B', '#FF4757']}
@@ -470,13 +485,9 @@ export default function GameScreen() {
           )}
 
           {phase === 'accuracy' && (
-            <TouchableOpacity
-              style={styles.accuracyZone}
-              onPress={lockAccuracy}
-              activeOpacity={1}
-            >
+            <View style={styles.accuracyZone}>
               <AccuracyMeter position={accuracyPos} />
-            </TouchableOpacity>
+            </View>
           )}
 
           {phase === 'result' && (
