@@ -4,6 +4,11 @@ import { Dimensions, Image, StyleSheet, View } from 'react-native';
 const { width: SW, height: SH } = Dimensions.get('window');
 const SCENE_H = Math.min(SH * 0.52, 440);
 
+// 3:4 portrait images — fill screen width, center-crop vertically
+const IMG_W = SW;
+const IMG_H = IMG_W / 0.75;                       // = SW * 4/3 ≈ 520px
+const IMG_TOP = -((IMG_H - SCENE_H) / 2) + 20;   // center vertically, slight upward nudge
+
 const BATTERS = [
   require('@/assets/images/batter_1.png'),
   require('@/assets/images/batter_2.png'),
@@ -12,24 +17,17 @@ const BATTERS = [
 
 interface Props {
   batterIndex?: number;
-  /** Top of the visible area (below the HUD card) in scene-relative pixels */
+  /** Not used for layout anymore — kept for API compat */
   visibleTop?: number;
 }
 
-export function BatterScene({ batterIndex = 0, visibleTop = 148 }: Props) {
-  // Size the image to exactly fill the visible portion of the scene (below HUD)
-  const visibleH = SCENE_H - visibleTop;
-  // 4:3 landscape image — scale by width, capped by visible height
-  const imgW = Math.min(SW, visibleH * (4 / 3));
-  const imgH = imgW * (3 / 4);
-  const imgLeft = (SW - imgW) / 2;
-
+export function BatterScene({ batterIndex = 0 }: Props) {
   return (
     <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
       <Image
         source={BATTERS[batterIndex % BATTERS.length]}
-        style={[styles.scene, { top: visibleTop, left: imgLeft, width: imgW, height: imgH }]}
-        resizeMode="contain"
+        style={[styles.scene, { top: IMG_TOP }]}
+        resizeMode="stretch"
       />
     </View>
   );
@@ -38,5 +36,8 @@ export function BatterScene({ batterIndex = 0, visibleTop = 148 }: Props) {
 const styles = StyleSheet.create({
   scene: {
     position: 'absolute',
+    left: 0,
+    width: IMG_W,
+    height: IMG_H,
   },
 });
