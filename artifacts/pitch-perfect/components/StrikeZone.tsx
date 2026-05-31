@@ -3,15 +3,19 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ZoneId } from '@/constants/GameTypes';
 
 const ZONE_LABELS: Record<ZoneId, string> = {
-  1: 'HI\nIN',  2: 'HIGH',  3: 'HI\nOUT',
-  4: 'IN',      5: '•',     6: 'OUT',
-  7: 'LO\nIN',  8: 'LOW',   9: 'LO\nOUT',
+  1:  'HI\nIN',  2:  'HIGH',  3:  'HI\nOUT',
+  4:  'UP\nIN',  5:  'UP',    6:  'UP\nOUT',
+  7:  'IN',      8:  '•',     9:  'OUT',
+  10: 'LO\nIN',  11: 'LOW',   12: 'LO\nOUT',
+  13: 'DN\nIN',  14: 'DOWN',  15: 'DN\nOUT',
 };
 
 const ZONE_TYPE: Record<ZoneId, 'corner' | 'edge' | 'center'> = {
-  1: 'corner', 2: 'edge',   3: 'corner',
-  4: 'edge',   5: 'center', 6: 'edge',
-  7: 'corner', 8: 'edge',   9: 'corner',
+  1:  'corner', 2:  'edge',   3:  'corner',
+  4:  'edge',   5:  'center', 6:  'edge',
+  7:  'edge',   8:  'center', 9:  'edge',
+  10: 'edge',   11: 'center', 12: 'edge',
+  13: 'corner', 14: 'edge',   15: 'corner',
 };
 
 interface StrikeZoneProps {
@@ -22,9 +26,9 @@ interface StrikeZoneProps {
 }
 
 export function StrikeZone({ selectedZone, onSelectZone, disabled, compact }: StrikeZoneProps) {
-  const zones: ZoneId[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-  const cellW = compact ? 60 : 72;
-  const cellH = compact ? 40 : 56;
+  const zones: ZoneId[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+  const cellW = compact ? 56 : 64;
+  const cellH = compact ? 30 : 40;
   const gridW = cellW * 3;
 
   return (

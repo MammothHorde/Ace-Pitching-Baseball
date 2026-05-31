@@ -48,19 +48,30 @@ import { CountBanner } from '@/components/CountBanner';
 // ─── Layout constants ────────────────────────────────────────────────────────
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const SCENE_H = Math.min(SCREEN_H * 0.52, 440);
-const ZONE_CELL_W = 60;
-const ZONE_CELL_H = 40;
+const ZONE_CELL_W = 56;
+const ZONE_CELL_H = 30;
 const ZONE_W = ZONE_CELL_W * 3;
 const ZONE_LEFT = (SCREEN_W - ZONE_W) / 2;
 // HUD card ends at ~149px (web) / ~120px (native) — push zone into visible area
 const HUD_APPROX = Platform.OS === 'web' ? 149 : 120;
 const VISIBLE_H = SCENE_H - HUD_APPROX;
-const ZONE_TOP = HUD_APPROX + VISIBLE_H * 0.30;   // catcher-glove level
+const ZONE_GRID_H = ZONE_CELL_H * 5;              // full 5-row grid height
+// Place at catcher-glove level, but clamp so the taller grid never clips off
+// the bottom of the (overflow:hidden) scene on short viewports.
+const ZONE_TOP = Math.max(
+  HUD_APPROX + 4,
+  Math.min(HUD_APPROX + VISIBLE_H * 0.30, SCENE_H - ZONE_GRID_H - 8),
+);
 const BALL_FROM_X = SCREEN_W / 2;
 const BALL_FROM_Y = SCENE_H * 0.96;
 
-const ZONE_COL: Record<ZoneId, number> = { 1:0, 2:1, 3:2, 4:0, 5:1, 6:2, 7:0, 8:1, 9:2 };
-const ZONE_ROW: Record<ZoneId, number> = { 1:0, 2:0, 3:0, 4:1, 5:1, 6:1, 7:2, 8:2, 9:2 };
+// 3-wide × 5-tall grid, numbered row-major 1…15.
+const ZONE_COL: Record<ZoneId, number> = {
+  1:0, 2:1, 3:2, 4:0, 5:1, 6:2, 7:0, 8:1, 9:2, 10:0, 11:1, 12:2, 13:0, 14:1, 15:2,
+};
+const ZONE_ROW: Record<ZoneId, number> = {
+  1:0, 2:0, 3:0, 4:1, 5:1, 6:1, 7:2, 8:2, 9:2, 10:3, 11:3, 12:3, 13:4, 14:4, 15:4,
+};
 
 function getZoneCenter(zone: ZoneId) {
   return {

@@ -41,11 +41,19 @@ export function getAvailablePoints(profile: { lifetimePoints: number; spentPoint
 //   • Sequence — never be predictable; tunnel pitches off the same look;
 //     the count dictates the plan, peaking at the 3-2 "payoff pitch".
 
-export const CORNER_ZONES = new Set<ZoneId>([1, 3, 7, 9]);
-export const EDGE_ZONES   = new Set<ZoneId>([2, 4, 6, 8]);
-export const HIGH_ZONES   = new Set<ZoneId>([1, 2, 3]);
-export const LOW_ZONES    = new Set<ZoneId>([7, 8, 9]);
-const DOWN_AND_AWAY: ZoneId = 9; // low-outside corner — the premium location
+// 3-wide × 5-tall strike-zone grid (15 cells, numbered row-major top→bottom):
+//    1  2  3   (top)
+//    4  5  6
+//    7  8  9   (middle)
+//   10 11 12
+//   13 14 15   (bottom)
+export const CORNER_ZONES = new Set<ZoneId>([1, 3, 13, 15]); // four extreme corners
+export const EDGE_ZONES   = new Set<ZoneId>([2, 4, 6, 7, 9, 10, 12, 14]); // border, non-corner
+export const HEART_ZONE: ZoneId = 8; // dead center — most hittable
+export const SOFT_HEART  = new Set<ZoneId>([5, 11]); // center column, near the middle
+export const HIGH_ZONES  = new Set<ZoneId>([1, 2, 3, 4, 5, 6]);     // top two tiers
+export const LOW_ZONES   = new Set<ZoneId>([10, 11, 12, 13, 14, 15]); // bottom two tiers
+const DOWN_AND_AWAY: ZoneId = 15; // low-outside corner — the premium location
 
 const OFFSPEED_PITCHES = new Set<PitchType>(['curveball', 'slider', 'changeup', 'splitter']);
 
@@ -162,7 +170,8 @@ export function calculatePitchOutcome(
   if (balls === 3 && strikes === 2) swingProb += 0.12;
   if (strikes === 1 && balls === 0) swingProb -= 0.04;
   if (CORNER_ZONES.has(zone)) swingProb -= 0.12;
-  if (zone === 5)             swingProb += 0.12;
+  if (zone === HEART_ZONE)    swingProb += 0.12;
+  else if (SOFT_HEART.has(zone)) swingProb += 0.06;
   if (HIGH_ZONES.has(zone))   swingProb += 0.04;
   if (LOW_ZONES.has(zone))    swingProb -= 0.04;
   if (accuracyScore < 0.4)  swingProb -= 0.10;
@@ -187,10 +196,11 @@ export function calculatePitchOutcome(
     if (strikes === 2) contactProb += 0.12;
     if (strikes === 0 && balls === 0) contactProb += 0.04;
     // Location: the heart of the plate is hammered; edges and corners are safer.
-    if (zone === 5)             contactProb += 0.10;
-    if (EDGE_ZONES.has(zone))   contactProb -= 0.04;
-    if (strat.paintedCorner)    contactProb -= 0.08;
-    if (strat.downAndAway)      contactProb -= 0.04;
+    if (zone === HEART_ZONE)      contactProb += 0.10;
+    else if (SOFT_HEART.has(zone)) contactProb += 0.05;
+    if (EDGE_ZONES.has(zone))     contactProb -= 0.04;
+    if (strat.paintedCorner)      contactProb -= 0.08;
+    if (strat.downAndAway)        contactProb -= 0.04;
     // Deception bonuses make the hitter miss.
     if (strat.backwards) contactProb -= 0.10;
     if (strat.tunnel)    contactProb -= 0.10;
@@ -239,10 +249,11 @@ export function calculateSequenceMultiplier(history: PitchRecord[]): { multiplie
   const recent = history.slice(-5);
   const types = new Set(recent.map(p => p.type));
   const getQuadrant = (z: ZoneId): string => {
-    if ([1, 4, 7].includes(z)) return 'inside';
-    if ([3, 6, 9].includes(z)) return 'outside';
-    if ([1, 2, 3].includes(z)) return 'high';
-    return 'low';
+    const col = (z - 1) % 3;          // 0 = inside, 1 = middle, 2 = outside
+    const row = Math.floor((z - 1) / 3); // 0 (top) … 4 (bottom)
+    if (col === 0) return 'inside';
+    if (col === 2) return 'outside';
+    return row <= 1 ? 'high' : 'low';
   };
   const locations = new Set(recent.map(p => getQuadrant(p.zone)));
 
