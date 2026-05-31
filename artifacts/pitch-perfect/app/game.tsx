@@ -248,6 +248,9 @@ export default function GameScreen() {
     const elapsed = Date.now() - accuracyStartTimeRef.current;
     const t = (elapsed % cycle) / cycle;
     const pos = (Math.sin(t * Math.PI * 2) + 1) / 2;
+    // Raw linear score drives the on-screen meter AND the perfect-range bonus,
+    // so the displayed perfect zone always matches the reward. Forgiveness for
+    // off-center needles is applied separately inside calculatePitchOutcome.
     const accuracyScore = 1 - Math.abs(pos - 0.5) * 2;
     setAccuracyPos(pos);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

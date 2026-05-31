@@ -41,3 +41,20 @@ The pitch grid is **5×5 (25 cells)** numbered row-major 1…25. The **inner 3×
 - **Taken pitch outside `STRIKE_ZONE` is always a ball** (no-swing branch). Only
   in-zone taken pitches can be called strikes. Out-of-zone also lowers swing &
   contact prob (chase swing-and-miss), softened at 2 strikes.
+
+## Meter forgiveness vs. perfect-bonus (two separate accuracy values)
+
+The raw needle score `accuracyScore = 1 - |pos-0.5|*2` (computed in `app/game.tsx`
+`lockAccuracy`) must stay **linear**. **Why:** it drives both the on-screen
+`AccuracyMeter` label/perfect-zone border AND `isPerfectAccuracy` (>=0.80 → needle
+within ±0.10 of center). If you ease it, the displayed perfect zone no longer matches
+where the +75 perfect bonus fires.
+
+Forgiveness for off-center needles lives **only inside `calculatePitchOutcome`**:
+it eases its own copy `acc = accuracyScore^0.6` and uses `acc` (never the raw score)
+for every outcome decision (auto-ball floor, swing/contact prob, called-strike-on-take).
+**How to apply:** to make the game more/less forgiving outside perfect, tune the
+exponent + the `acc` thresholds there; do NOT touch `accuracyScore` in game.tsx or the
+`isPerfect*` thresholds, or you'll desync the meter UI from the reward.
+**Balance check:** a clear miss (needle dev > ~0.35, linear score < 0.30 = meter "MISS")
+must still fail (taken in-zone → ball); only the extreme edge auto-balls.

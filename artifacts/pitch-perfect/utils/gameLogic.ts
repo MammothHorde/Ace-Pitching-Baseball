@@ -179,8 +179,16 @@ export function calculatePitchOutcome(
   balls: number,
   history: PitchRecord[] = [],
 ): PitchOutcome {
-  if (accuracyScore < 0.15) return 'ball';
-  if (powerScore < 0.12) return 'hit';
+  // Forgive meter misses OUTSIDE the perfect range: ease the raw accuracy so a
+  // moderately off-center needle still grades well for OUTCOME purposes only.
+  // The perfect-range bonus and the on-screen meter keep using the raw linear
+  // score, so this softens results without moving the perfect window.
+  const acc = Math.pow(Math.max(0, accuracyScore), 0.6);
+
+  // Forgiving floors: only a badly mistimed meter (needle near the edge / power
+  // barely held) triggers an automatic ball or hit.
+  if (acc < 0.20) return 'ball';
+  if (powerScore < 0.06) return 'hit';
 
   const strat = readStrategy(pitchType, zone, balls, strikes, history);
 
@@ -197,8 +205,8 @@ export function calculatePitchOutcome(
   // Pitches off the plate (outside the 3×3 zone) get taken — unless 2 strikes
   // forces the hitter to protect and chase.
   if (!STRIKE_ZONE.has(zone)) swingProb -= strikes === 2 ? 0.10 : 0.24;
-  if (accuracyScore < 0.4)  swingProb -= 0.10;
-  if (accuracyScore > 0.75) swingProb += 0.06;
+  if (acc < 0.45) swingProb -= 0.10;
+  if (acc > 0.80) swingProb += 0.06;
   // A predictable hitter sits on the pitch and ambushes it.
   if (strat.predictable) swingProb += 0.08;
   // Pitching backwards freezes the hitter — he's gearing up for a fastball.
@@ -209,8 +217,10 @@ export function calculatePitchOutcome(
 
   if (didSwing) {
     let contactProb = 0.40;
-    contactProb -= Math.max(0, (0.30 - Math.abs(powerScore - 0.70))) * 0.20;
-    contactProb -= accuracyScore * 0.14;
+    // Power helps the pitcher induce whiffs across a wide band, not just at the
+    // exact sweet spot — so under/over-powering outside perfect is forgiven.
+    contactProb -= Math.max(0, (0.45 - Math.abs(powerScore - 0.60))) * 0.18;
+    contactProb -= acc * 0.14;
     if (pitchType === 'curveball' || pitchType === 'slider') contactProb -= 0.07 + stats.spin * 0.007;
     if (pitchType === 'splitter')  contactProb -= 0.10 + stats.spin * 0.008;
     if (pitchType === 'changeup')  contactProb -= 0.04;
@@ -240,7 +250,7 @@ export function calculatePitchOutcome(
     // Took the pitch: only the inner 3×3 can be a called strike; off the plate
     // (or a missed spot) is a ball.
     if (!STRIKE_ZONE.has(zone)) return 'ball';
-    return accuracyScore > 0.32 ? 'strike_called' : 'ball';
+    return acc > 0.45 ? 'strike_called' : 'ball';
   }
 }
 
