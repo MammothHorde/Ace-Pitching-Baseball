@@ -7,11 +7,9 @@ import {
   Text,
   View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import {
   GamePhase,
@@ -479,31 +477,16 @@ export default function GameScreen() {
           <CountBanner situation={getCountSituation(balls, strikes)} />
         )}
 
-        {/* Prompt / pitch button — sits directly above the pitch type selector */}
-        {phase === 'selecting' && (
+        {/* Pre-selection guidance prompt — sits directly above the pitch type selector */}
+        {phase === 'selecting' && !canPitch && (
           <View style={styles.pitchZone}>
-            {canPitch ? (
-              <LinearGradient
-                colors={['#FF6B6B', '#FF4757']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.pitchBtn}
-              >
-                <View style={styles.pitchCueRow}>
-                  <MaterialCommunityIcons name="gesture-tap" size={26} color="#fff" />
-                  <Text style={styles.pitchBtnText}>TAP ANYWHERE TO PITCH</Text>
-                </View>
-                <Text style={styles.pitchBtnSub}>Tap to lock power, then accuracy</Text>
-              </LinearGradient>
-            ) : (
-              <View style={styles.promptBox}>
-                <Text style={styles.promptText}>
-                  {!selectedZone
-                    ? '☝️  Tap a zone in the field above'
-                    : '👇  Select your pitch type'}
-                </Text>
-              </View>
-            )}
+            <View style={styles.promptBox}>
+              <Text style={styles.promptText}>
+                {!selectedZone
+                  ? '☝️  Tap a zone in the field above'
+                  : '👇  Select your pitch type'}
+              </Text>
+            </View>
           </View>
         )}
 
@@ -619,30 +602,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontWeight: '800',
     letterSpacing: 0.4,
-  },
-  pitchBtn: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    gap: 4,
-    borderRadius: 20,
-  },
-  pitchCueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  pitchBtnText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '900',
-    letterSpacing: 1.2,
-  },
-  pitchBtnSub: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.2,
   },
   promptBox: {
     alignItems: 'center',
