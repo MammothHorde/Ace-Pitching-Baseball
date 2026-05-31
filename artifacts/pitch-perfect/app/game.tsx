@@ -82,7 +82,7 @@ function zoneGeometry(difficulty: number) {
 export default function GameScreen() {
   const insets = useSafeAreaInsets();
   const { profile, recordGameResult, settings } = usePitcher();
-  const { playSfx } = useAudio();
+  const { playSfx, playSfxIn } = useAudio();
 
   const [phase, setPhase]                       = useState<GamePhase>('selecting');
   const [inning, setInning]                     = useState(1);
@@ -287,9 +287,26 @@ export default function GameScreen() {
     const isKOLooking = isKO && outcome === 'strike_called';
     const isWalk      = outcome === 'ball' && newBalls >= 4;
 
-    if (isKO) playSfx('cheer');
-    else if (outcome === 'strike_called' || outcome === 'strike_swinging') playSfx('mitt');
-    else if (outcome === 'hit') playSfx('hit');
+    // Layered audio: (1) the immediate catch/contact sound, (2) the umpire's
+    // call shortly after, (3) the crowd reaction last.
+    const isStrike = outcome === 'strike_called' || outcome === 'strike_swinging';
+    if (isStrike) playSfx('mitt');
+    else if (outcome === 'ball') playSfx('mitt');
+    else if (outcome === 'hit' || outcome === 'foul') playSfx('hit');
+
+    const UMP = 280; // ms after the catch, so the call lands cleanly
+    if (isKO) {
+      playSfxIn('umpStrikeout', UMP);
+      playSfxIn('cheer', UMP + 420);          // home crowd roars for the K
+    } else if (isStrike) {
+      playSfxIn(newStrikes === 1 ? 'umpStrike1' : 'umpStrike2', UMP);
+      if (Math.random() < 0.4) playSfxIn('cheer', UMP + 380);
+    } else if (outcome === 'ball') {
+      playSfxIn('umpBall', UMP);
+      if (isWalk && Math.random() < 0.7) playSfxIn('boo', UMP + 380);
+    } else if (outcome === 'hit') {
+      if (Math.random() < 0.6) playSfxIn('boo', 220); // batter got one off the pitcher
+    }
 
     const strat = readStrategy(pitchType, zone, curBalls, curStr, history);
     const { bonus: stratBonus, labels: stratLabels, isPayoffWin } =

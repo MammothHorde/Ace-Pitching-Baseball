@@ -27,6 +27,16 @@ volume slider moves. Don't expect BGM to auto-start on mount on web.
 `.pause()`, `.seekTo(0)`, `.playing`, `.remove()`, `setAudioModeAsync({playsInSilentMode:true})`.
 Players are created once in a mount effect and cleaned up via `.remove()`.
 
+# Layered pitch-outcome audio (umpire + crowd)
+`resolvePitch` in game.tsx layers three sounds: immediate catch/contact (mitt/hit)
+→ umpire call at +280ms via `playSfxIn` → crowd reaction after. Umpire clips:
+umpBall, umpStrike1, umpStrike2, umpStrikeout (latter says "strike three, you're
+out", used on KO). Strike-count mapping: KO branch handles 3rd strike, so
+`newStrikes===1?umpStrike1:umpStrike2` never needs a strike-3 case. Crowd: cheer
+guaranteed on K + probabilistic on strikes; boo probabilistic on walk and on hit.
+`playSfxIn(name, ms)` lives in AudioContext, tracks timers in a ref, clears them on
+provider unmount — needed so delayed sounds don't fire against removed players.
+
 # Settings persistence
 `PitcherProfile.settings` persisted via AsyncStorage. Both the load path AND
 `updateSettings` clamp every value to [0,1] (`clamp01`) so corrupted storage can't

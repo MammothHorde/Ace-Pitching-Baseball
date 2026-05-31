@@ -65,3 +65,33 @@ id = "kPFDeVxNhuT2EBAiHkC-x"
 uri = "file://attached_assets/generated_audio/sound_effect_pp_tap.mp3"
 type = "audio"
 title = "pp_tap"
+
+[[outputs]]
+id = "mlA38TRmyv3wXBvhhD2uc"
+uri = "file://attached_assets/generated_audio/ump_ball.mp3"
+type = "audio"
+title = "ump ball"
+
+[[outputs]]
+id = "gZ-JzwHyK1wkrrnFczyw9"
+uri = "file://attached_assets/generated_audio/ump_strike2.mp3"
+type = "audio"
+title = "ump strike two"
+
+[[outputs]]
+id = "VdVstCWW9I2oJVoiATP5i"
+uri = "file://attached_assets/generated_audio/ump_strike1.mp3"
+type = "audio"
+title = "ump strike one"
+
+[[outputs]]
+id = "yXnLjS_bbimT6Fsz0Eabi"
+uri = "file://attached_assets/generated_audio/ump_strikeout.mp3"
+type = "audio"
+title = "ump strikeout"
+
+[[outputs]]
+id = "Ay71SKLQYzP6BiaK1s-MO"
+uri = "file://attached_assets/generated_audio/boo.mp3"
+type = "audio"
+title = "crowd boos"
