@@ -479,8 +479,36 @@ export default function GameScreen() {
           <CountBanner situation={getCountSituation(balls, strikes)} />
         )}
 
-        {/* Pitch type selector — shown while selecting */}
-        {(phase === 'selecting') && (
+        {/* Prompt / pitch button — sits directly above the pitch type selector */}
+        {phase === 'selecting' && (
+          <View style={styles.pitchZone}>
+            {canPitch ? (
+              <LinearGradient
+                colors={['#FF6B6B', '#FF4757']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.pitchBtn}
+              >
+                <View style={styles.pitchCueRow}>
+                  <MaterialCommunityIcons name="gesture-tap" size={26} color="#fff" />
+                  <Text style={styles.pitchBtnText}>TAP ANYWHERE TO PITCH</Text>
+                </View>
+                <Text style={styles.pitchBtnSub}>Tap to lock power, then accuracy</Text>
+              </LinearGradient>
+            ) : (
+              <View style={styles.promptBox}>
+                <Text style={styles.promptText}>
+                  {!selectedZone
+                    ? '☝️  Tap a zone in the field above'
+                    : '👇  Select your pitch type'}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Pitch type selector — now just below the prompt text box */}
+        {phase === 'selecting' && (
           <PitchTypeSelector
             arsenal={profile.unlockedPitches}
             selectedPitch={selectedPitch}
@@ -496,33 +524,6 @@ export default function GameScreen() {
 
         {/* Control area */}
         <View style={styles.controlArea}>
-
-          {phase === 'selecting' && (
-            <View style={styles.pitchZone}>
-              {canPitch ? (
-                <LinearGradient
-                  colors={['#FF6B6B', '#FF4757']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.pitchBtn}
-                >
-                  <View style={styles.pitchCueRow}>
-                    <MaterialCommunityIcons name="gesture-tap" size={26} color="#fff" />
-                    <Text style={styles.pitchBtnText}>TAP ANYWHERE TO PITCH</Text>
-                  </View>
-                  <Text style={styles.pitchBtnSub}>Tap to lock power, then accuracy</Text>
-                </LinearGradient>
-              ) : (
-                <View style={styles.promptBox}>
-                  <Text style={styles.promptText}>
-                    {!selectedZone
-                      ? '☝️  Tap a zone in the field above'
-                      : '👇  Select your pitch type'}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
 
           {(phase === 'power' || phase === 'accuracy') && (
             <View>
@@ -599,7 +600,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
-  pitchZone: { borderRadius: 20, overflow: 'hidden', minHeight: 80 },
+  pitchZone: { borderRadius: 20, overflow: 'hidden' },
   metersRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -646,7 +647,7 @@ const styles = StyleSheet.create({
   promptBox: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20,
+    paddingVertical: 14,
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 20,
     borderWidth: 1,
