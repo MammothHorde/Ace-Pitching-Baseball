@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "QMq1oSyX8nweootwFhRto"
@@ -30,3 +29,39 @@ id = "8RG1ziIV6WIbzGdzgNSew"
 uri = "file://artifacts/pitch-perfect/assets/images/batter_3.png"
 type = "image"
 title = "batter-black-swing-load"
+
+[[outputs]]
+id = "x07VhkfH3oS9cBXWD0mp1"
+uri = "file://attached_assets/generated_audio/sound_effect_pp_throw.mp3"
+type = "audio"
+title = "pp_throw"
+
+[[outputs]]
+id = "FLcnvZQJgRr5oP66DdN3a"
+uri = "file://attached_assets/generated_audio/sound_effect_pp_mitt.mp3"
+type = "audio"
+title = "pp_mitt"
+
+[[outputs]]
+id = "o4ri453A9-H9ZIo9h1zPt"
+uri = "file://attached_assets/generated_audio/sound_effect_pp_cheer.mp3"
+type = "audio"
+title = "pp_cheer"
+
+[[outputs]]
+id = "myMFGVWvgHSCVLE4HSo2u"
+uri = "file://attached_assets/generated_audio/sound_effect_pp_hit.mp3"
+type = "audio"
+title = "pp_hit"
+
+[[outputs]]
+id = "bHUqfFC_Xw0AzcUV3wb3w"
+uri = "file://attached_assets/generated_audio/music_pitchperfect_bgm.mp3"
+type = "audio"
+title = "pitchperfect_bgm"
+
+[[outputs]]
+id = "kPFDeVxNhuT2EBAiHkC-x"
+uri = "file://attached_assets/generated_audio/sound_effect_pp_tap.mp3"
+type = "audio"
+title = "pp_tap"

@@ -38,12 +38,23 @@ interface StrikeZoneProps {
   onSelectZone: (zone: ZoneId) => void;
   disabled?: boolean;
   compact?: boolean;
+  /** Override cell width — keep in sync with game.tsx ball targeting. */
+  cellWidth?: number;
+  /** Override cell height — keep in sync with game.tsx ball targeting. */
+  cellHeight?: number;
 }
 
-export function StrikeZone({ selectedZone, onSelectZone, disabled, compact }: StrikeZoneProps) {
+export function StrikeZone({
+  selectedZone,
+  onSelectZone,
+  disabled,
+  compact,
+  cellWidth,
+  cellHeight,
+}: StrikeZoneProps) {
   const zones = Array.from({ length: GRID * GRID }, (_, i) => (i + 1) as ZoneId);
-  const cellW = compact ? 34 : 48;
-  const cellH = compact ? 30 : 44;
+  const cellW = cellWidth ?? (compact ? 34 : 48);
+  const cellH = cellHeight ?? (compact ? 30 : 44);
   const gridW = cellW * GRID;
 
   return (

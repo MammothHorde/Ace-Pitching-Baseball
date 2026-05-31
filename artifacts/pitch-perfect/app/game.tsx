@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   PanResponder,
@@ -32,6 +32,7 @@ import {
   readStrategy,
 } from '@/utils/gameLogic';
 import { usePitcher } from '@/context/PitcherContext';
+import { useAudio } from '@/context/AudioContext';
 import { StadiumBackground } from '@/components/StadiumBackground';
 import { BatterScene } from '@/components/BatterScene';
 import { BallFlight } from '@/components/BallFlight';
@@ -48,20 +49,11 @@ import { CountBanner } from '@/components/CountBanner';
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const SCENE_H = Math.min(SCREEN_H * 0.52, 440);
 const ZONE_GRID = 5;
-const ZONE_CELL_W = 34;
-const ZONE_CELL_H = 30;
-const ZONE_W = ZONE_CELL_W * ZONE_GRID;
-const ZONE_LEFT = (SCREEN_W - ZONE_W) / 2;
+const BASE_CELL_W = 34;
+const BASE_CELL_H = 30;
 // HUD card ends at ~149px (web) / ~120px (native) — push zone into visible area
 const HUD_APPROX = Platform.OS === 'web' ? 149 : 120;
 const VISIBLE_H = SCENE_H - HUD_APPROX;
-const ZONE_GRID_H = ZONE_CELL_H * ZONE_GRID;      // full grid height
-// Place at catcher-glove level, but clamp so the grid never clips off the
-// bottom of the (overflow:hidden) scene. The bottom bound always wins on short
-// viewports: cap the top so bottom stays on-screen, then floor it at 8px.
-const ZONE_TOP_DESIRED = HUD_APPROX + VISIBLE_H * 0.30;
-const ZONE_TOP_MAX = Math.max(8, SCENE_H - ZONE_GRID_H - 8);
-const ZONE_TOP = Math.max(8, Math.min(ZONE_TOP_DESIRED, ZONE_TOP_MAX));
 const BALL_FROM_X = SCREEN_W / 2;
 const BALL_FROM_Y = SCENE_H * 0.96;
 
@@ -69,16 +61,28 @@ const BALL_FROM_Y = SCENE_H * 0.96;
 const zoneCol = (zone: ZoneId) => (zone - 1) % ZONE_GRID;        // 0 … 4
 const zoneRow = (zone: ZoneId) => Math.floor((zone - 1) / ZONE_GRID); // 0 … 4
 
-function getZoneCenter(zone: ZoneId) {
-  return {
-    x: ZONE_LEFT + zoneCol(zone) * ZONE_CELL_W + ZONE_CELL_W / 2,
-    y: ZONE_TOP  + zoneRow(zone) * ZONE_CELL_H + ZONE_CELL_H / 2,
-  };
+// Difficulty 0…1 → grid geometry. Easier = bigger zone, harder = smaller zone.
+// The cell size MUST match what StrikeZone renders (passed as props) so the
+// ball-flight target stays aligned with the tapped cell.
+function zoneGeometry(difficulty: number) {
+  const scale = 1.25 - 0.47 * difficulty;          // 1.25 (easy) … 0.78 (hard)
+  const cellW = Math.round(BASE_CELL_W * scale);
+  const cellH = Math.round(BASE_CELL_H * scale);
+  const zoneW = cellW * ZONE_GRID;
+  const zoneLeft = (SCREEN_W - zoneW) / 2;
+  const gridH = cellH * ZONE_GRID;
+  // Clamp so the grid never clips off the bottom of the (overflow:hidden) scene:
+  // cap the top so the bottom stays on-screen, then floor it at 8px.
+  const topDesired = HUD_APPROX + VISIBLE_H * 0.30;
+  const topMax = Math.max(8, SCENE_H - gridH - 8);
+  const zoneTop = Math.max(8, Math.min(topDesired, topMax));
+  return { cellW, cellH, zoneW, zoneLeft, zoneTop };
 }
 
 export default function GameScreen() {
   const insets = useSafeAreaInsets();
-  const { profile, recordGameResult } = usePitcher();
+  const { profile, recordGameResult, settings } = usePitcher();
+  const { playSfx } = useAudio();
 
   const [phase, setPhase]                       = useState<GamePhase>('selecting');
   const [inning, setInning]                     = useState(1);
@@ -94,7 +98,7 @@ export default function GameScreen() {
   const [showInningBreak, setShowInningBreak]   = useState(false);
   const [justFinishedInning, setJustFinished]   = useState(1);
   const [showBallFlight, setShowBallFlight]     = useState(false);
-  const [ballTarget, setBallTarget]             = useState({ x: SCREEN_W / 2, y: ZONE_TOP + 60 });
+  const [ballTarget, setBallTarget]             = useState({ x: SCREEN_W / 2, y: SCENE_H * 0.4 });
   const [batterIndex, setBatterIndex]           = useState(0);
   const [powerLevel, setPowerLevel]             = useState(0);
   const [accuracyPos, setAccuracyPos]           = useState(0.5);
@@ -153,7 +157,20 @@ export default function GameScreen() {
   const bottomPad = Platform.OS === 'web' ? 34 : insets.bottom;
 
   const powerFillDuration    = 1500 + profile.stats.stamina * 200;
-  const accuracyCycleDuration = 600 + profile.stats.accuracy * 100;
+  const diffSpeedMult        = 1.4 - 0.85 * settings.difficulty;  // 1.4 easy … 0.55 hard
+  const accuracyCycleDuration = (600 + profile.stats.accuracy * 100) * diffSpeedMult;
+
+  const { cellW, cellH, zoneW, zoneLeft, zoneTop } = useMemo(
+    () => zoneGeometry(settings.difficulty),
+    [settings.difficulty],
+  );
+
+  function getZoneCenter(zone: ZoneId) {
+    return {
+      x: zoneLeft + zoneCol(zone) * cellW + cellW / 2,
+      y: zoneTop  + zoneRow(zone) * cellH + cellH / 2,
+    };
+  }
 
   useEffect(() => () => {
     if (resultTimeoutRef.current)   clearTimeout(resultTimeoutRef.current);
@@ -240,6 +257,7 @@ export default function GameScreen() {
     const target = getZoneCenter(zone);
     setBallTarget(target);
     setShowBallFlight(true);
+    playSfx('throw');
     if (ballFlightRef.current) clearTimeout(ballFlightRef.current);
     ballFlightRef.current = setTimeout(() => {
       setShowBallFlight(false);
@@ -268,6 +286,10 @@ export default function GameScreen() {
     const isKO        = newStrikes >= 3 && (outcome === 'strike_called' || outcome === 'strike_swinging');
     const isKOLooking = isKO && outcome === 'strike_called';
     const isWalk      = outcome === 'ball' && newBalls >= 4;
+
+    if (isKO) playSfx('cheer');
+    else if (outcome === 'strike_called' || outcome === 'strike_swinging') playSfx('mitt');
+    else if (outcome === 'hit') playSfx('hit');
 
     const strat = readStrategy(pitchType, zone, curBalls, curStr, history);
     const { bonus: stratBonus, labels: stratLabels, isPayoffWin } =
@@ -390,14 +412,16 @@ export default function GameScreen() {
         <View style={[
           styles.zoneOverlay,
           {
-            top: ZONE_TOP,
-            left: ZONE_LEFT,
-            width: ZONE_W,
+            top: zoneTop,
+            left: zoneLeft,
+            width: zoneW,
             opacity: phase === 'result' ? 0.35 : 1,
           },
         ]}>
           <StrikeZone
             compact
+            cellWidth={cellW}
+            cellHeight={cellH}
             selectedZone={selectedZone}
             onSelectZone={zone => {
               if (phase !== 'selecting') return;

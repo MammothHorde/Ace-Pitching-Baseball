@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { PitcherProfile, PitcherStats, PitchingStyle, PitchType } from '@/constants/GameTypes';
+import { DEFAULT_SETTINGS, GameSettings, PitcherProfile, PitcherStats, PitchingStyle, PitchType } from '@/constants/GameTypes';
 import { UPGRADE_COSTS, PITCH_UNLOCK_COSTS, getAvailablePoints } from '@/utils/gameLogic';
 
 const STORAGE_KEY = '@pitcher_profile_v1';
@@ -16,13 +16,21 @@ const DEFAULT_PROFILE: PitcherProfile = {
   unlockedPitches: ['fastball', 'curveball'],
   statUpgradeCounts: { speed: 0, accuracy: 0, stamina: 0, spin: 0 },
   pitchingStyle: 'classic',
+  settings: { ...DEFAULT_SETTINGS },
 };
+
+function clamp01(n: number): number {
+  if (Number.isNaN(n)) return 0;
+  return Math.max(0, Math.min(1, n));
+}
 
 interface PitcherContextType {
   profile: PitcherProfile;
   isLoading: boolean;
   pitchingStyle: PitchingStyle;
   setPitchingStyle: (style: PitchingStyle) => Promise<void>;
+  settings: GameSettings;
+  updateSettings: (partial: Partial<GameSettings>) => void;
   recordGameResult: (score: number) => Promise<void>;
   upgradeStat: (stat: keyof PitcherStats) => boolean;
   unlockPitch: (pitch: PitchType) => boolean;
@@ -43,10 +51,16 @@ export function PitcherProvider({ children }: { children: React.ReactNode }) {
       if (data) {
         try {
           const saved = JSON.parse(data) as PitcherProfile;
+          const merged = { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) };
           setProfile({
             ...DEFAULT_PROFILE,
             ...saved,
             pitchingStyle: saved.pitchingStyle ?? 'classic',
+            settings: {
+              difficulty: clamp01(merged.difficulty),
+              bgmVolume: clamp01(merged.bgmVolume),
+              sfxVolume: clamp01(merged.sfxVolume),
+            },
           });
         } catch {
           setProfile(DEFAULT_PROFILE);
@@ -64,6 +78,20 @@ export function PitcherProvider({ children }: { children: React.ReactNode }) {
   const setPitchingStyle = useCallback(async (style: PitchingStyle) => {
     setProfile(prev => {
       const updated: PitcherProfile = { ...prev, pitchingStyle: style };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const updateSettings = useCallback((partial: Partial<GameSettings>) => {
+    setProfile(prev => {
+      const current = prev.settings ?? DEFAULT_SETTINGS;
+      const next: GameSettings = {
+        difficulty: clamp01(partial.difficulty ?? current.difficulty),
+        bgmVolume: clamp01(partial.bgmVolume ?? current.bgmVolume),
+        sfxVolume: clamp01(partial.sfxVolume ?? current.sfxVolume),
+      };
+      const updated: PitcherProfile = { ...prev, settings: next };
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       return updated;
     });
@@ -145,6 +173,8 @@ export function PitcherProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       pitchingStyle: profile.pitchingStyle ?? 'classic',
       setPitchingStyle,
+      settings: profile.settings ?? DEFAULT_SETTINGS,
+      updateSettings,
       recordGameResult,
       upgradeStat,
       unlockPitch,

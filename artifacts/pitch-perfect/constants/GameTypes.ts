@@ -40,6 +40,21 @@ export interface PitcherStats {
   spin: number;
 }
 
+export interface GameSettings {
+  /** 0 = easiest (slow meter, big zone) … 1 = hardest (fast meter, small zone). */
+  difficulty: number;
+  /** Background music volume, 0…1. */
+  bgmVolume: number;
+  /** Sound-effects volume, 0…1. */
+  sfxVolume: number;
+}
+
+export const DEFAULT_SETTINGS: GameSettings = {
+  difficulty: 0.5,
+  bgmVolume: 0.55,
+  sfxVolume: 0.8,
+};
+
 export interface PitcherProfile {
   name: string;
   level: number;
@@ -51,6 +66,7 @@ export interface PitcherProfile {
   unlockedPitches: PitchType[];
   statUpgradeCounts: Record<keyof PitcherStats, number>;
   pitchingStyle?: PitchingStyle;
+  settings?: GameSettings;
 }
 
 export interface PitchResult {

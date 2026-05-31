@@ -13,10 +13,12 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { usePitcher } from '@/context/PitcherContext';
+import { useAudio } from '@/context/AudioContext';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { profile, isLoading } = usePitcher();
+  const { playSfx } = useAudio();
   const topPad = Platform.OS === 'web' ? 67 : insets.top;
   const bottomPad = Platform.OS === 'web' ? 34 : insets.bottom;
 
@@ -31,6 +33,15 @@ export default function HomeScreen() {
         colors={['rgba(11,30,61,0.55)', 'rgba(11,30,61,0.88)', 'rgba(11,30,61,0.98)']}
         style={StyleSheet.absoluteFill}
       />
+
+      <TouchableOpacity
+        style={[styles.gearBtn, { top: topPad + 4 }]}
+        onPress={() => { playSfx('tap'); router.push('/settings'); }}
+        activeOpacity={0.7}
+        hitSlop={10}
+      >
+        <MaterialCommunityIcons name="cog" size={24} color="rgba(255,255,255,0.85)" />
+      </TouchableOpacity>
 
       <ScrollView
         contentContainerStyle={[
@@ -81,7 +92,7 @@ export default function HomeScreen() {
 
         <TouchableOpacity
           style={styles.playBtn}
-          onPress={() => router.push('/game')}
+          onPress={() => { playSfx('tap'); router.push('/game'); }}
           activeOpacity={0.85}
         >
           <LinearGradient
@@ -97,11 +108,20 @@ export default function HomeScreen() {
 
         <TouchableOpacity
           style={styles.upgradeBtn}
-          onPress={() => router.push('/upgrade')}
+          onPress={() => { playSfx('tap'); router.push('/upgrade'); }}
           activeOpacity={0.85}
         >
           <MaterialCommunityIcons name="trophy" size={22} color="#FFCC00" />
           <Text style={styles.upgradeBtnText}>PITCHER ROOM</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.settingsBtn}
+          onPress={() => { playSfx('tap'); router.push('/settings'); }}
+          activeOpacity={0.85}
+        >
+          <MaterialCommunityIcons name="cog" size={20} color="rgba(255,255,255,0.7)" />
+          <Text style={styles.settingsBtnText}>SETTINGS</Text>
         </TouchableOpacity>
 
         <View style={styles.howBox}>
@@ -180,6 +200,34 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,204,0,0.3)',
   },
   upgradeBtnText: { color: '#FFCC00', fontSize: 16, fontWeight: '800', letterSpacing: 1 },
+  settingsBtn: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 18,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  settingsBtnText: {
+    color: 'rgba(255,255,255,0.7)', fontSize: 15, fontWeight: '800', letterSpacing: 1,
+  },
+  gearBtn: {
+    position: 'absolute',
+    right: 18,
+    zIndex: 10,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(11,30,61,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
   howBox: {
     width: '100%',
     backgroundColor: 'rgba(22,40,71,0.8)',
