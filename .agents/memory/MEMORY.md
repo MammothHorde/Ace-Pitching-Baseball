@@ -1,0 +1,1 @@
+- [PitchPerfect strategy/scoring model](pitchperfect-strategy-model.md) — real-baseball strategy feeds outcome bias + flat post-multiplier scoring; history excludes current pitch; payoff win is success-gated.

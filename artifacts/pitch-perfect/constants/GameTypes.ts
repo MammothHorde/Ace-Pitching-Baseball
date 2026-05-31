@@ -4,6 +4,20 @@ export type GamePhase = 'selecting' | 'power' | 'accuracy' | 'result' | 'inning_
 export type PitchOutcome = 'strike_called' | 'strike_swinging' | 'ball' | 'foul' | 'hit';
 export type PitchingStyle = 'classic' | 'total_control';
 
+export type CountSituationKey =
+  | 'first_pitch'
+  | 'pitchers_count'
+  | 'hitters_count'
+  | 'payoff'
+  | 'neutral';
+
+export interface CountSituation {
+  key: CountSituationKey;
+  label: string;
+  hint: string;
+  color: string;
+}
+
 export interface PitchRecord {
   type: PitchType;
   zone: ZoneId;
@@ -47,4 +61,6 @@ export interface PitchResult {
   isKO: boolean;
   isKOLooking: boolean;
   sequenceLabel: string;
+  strategyLabels: string[];
+  isPayoffPitch: boolean;
 }

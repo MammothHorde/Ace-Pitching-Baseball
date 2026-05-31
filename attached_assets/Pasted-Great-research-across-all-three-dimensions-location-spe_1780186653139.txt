@@ -1,0 +1,91 @@
+Great research across all three dimensions — location, speed, and sequencing. Here's a comprehensive breakdown you can use both to understand the strategy yourself and to communicate it clearly to Replit.
+
+---
+
+# Baseball Pitching Strategy: Location, Speed & Sequencing
+
+## 1. Location Strategy — Where to Throw
+
+### The Zone Geography
+Pitches thrown near the heart of the plate — the center — are the most favorable for batters. Pitches on the edges are very difficult to hit but can still be called strikes, making the edges the ideal target for pitchers.
+
+The strike zone is essentially divided into three tiers of danger for the pitcher:
+
+**The Heart (center)** — Danger zone for pitchers. Most of the damage batters do comes on mistake pitches left over the heart of the plate or up in the zone. Any pitch here gives the batter the best chance to make solid contact.
+
+**The Edges & Corners** — The golden zone. The edges are very difficult for hitters because they can be hard to hit but also be called strikes. Down and away (low and to the opposite-hand side of the batter) is considered the single best location.
+
+**Outside the Zone ("Waste" or "Chase" pitches)** — Used strategically when the pitcher has the advantage. On an 0-2 count, throwing a pitch outside the zone tempts batters to chase, producing more strikeouts and a lower overall wOBA allowed compared to throwing strikes.
+
+### Inside vs. Outside
+Research using Japanese professional baseball data found that pitching to the outside is more effective than pitching inside for minimizing runs allowed on average — and outside pitching attempts were consistently effective regardless of the batter's estimated ability.
+
+However, while pitching away is generally more effective, a pitcher almost certainly needs to pitch inside as well to avoid being predictable.
+
+---
+
+## 2. Speed Strategy — Velocity & Deception
+
+### The Fastball as the Foundation
+A pitcher's strategy with a four-seam fastball is to throw it with as much velocity as possible — the idea being the hitter won't be able to react quickly enough. Historically pitchers threw 60–65% fastballs, but today's pitchers throw around 40% fastballs and roughly 20% each of curveballs, sliders, and changeups.
+
+### The Changeup: Timing Disruption
+The changeup is thrown 8–15 mph slower than a fastball, and if thrown correctly will confuse the batter because the human eye cannot discern that the ball is coming slower until it is around 30 feet from the plate — by then the batter is already committed to a swing timed for a faster pitch.
+
+This exploits what neuropsychologists call "functional fixedness" — once a batter sees a pitch at 92 mph, he calibrates himself to expect the next pitch to be 92 mph as well, and can't adjust quickly enough when it arrives at 80.
+
+### Pitching Backwards
+Elite pitchers often "pitch backwards" — throwing offspeed pitches in fastball counts (when batters expect heat) and fastballs in offspeed counts (when batters are sitting on breaking balls). Everyone expects a fastball on 3-1 or 2-1, so throwing a changeup in those counts can be devastating.
+
+---
+
+## 3. Sequencing Strategy — The Order of Pitches
+
+### Never Be Predictable
+A pitching strategy should always aim to get ahead of hitters, change speeds often but without falling into a pattern. If a pitcher always follows a fastball with an offspeed pitch, hitters will learn that pattern and begin anticipating it.
+
+Pitching is like a poker game — if the batter knows what's coming, it becomes nearly impossible to win. A pitcher must balance his best pitch with others to keep the hitter guessing. And it works both ways: if a pitcher knew what the hitter was expecting, he'd simply throw something different.
+
+### Pitch Tunneling
+Tunneling is the art of making two different pitches follow the same early flight path before diverging after the batter's "decision point" — the moment they must commit to a swing. Since hitters pick up the ball at release and commit well before impact, tunneling hides differences in velocity and movement until it's too late to adjust.
+
+Paired pitches work best when they follow the same path and diverge after the decision point, winding up in two distinct zones of the plate. The classic example is a high fastball followed by a low curveball — both look identical leaving the hand.
+
+### Count-Based Strategy
+
+| Count | Situation | Strategy |
+|---|---|---|
+| 0-0 | Neutral | Establish fastball, get ahead |
+| 0-2 | Pitcher's count | Waste pitch just off zone, expand |
+| 3-0 | Batter's count | Groove a fastball for a strike |
+| 3-2 (Full) | "Payoff pitch" | Best pitch, best location — no room for error |
+| 2-0 / 3-1 | Hitter's count | Pitcher must throw a strike — hitter sitting fastball |
+
+A 3-2 full count is called the "payoff pitch" — a mistake by either the pitcher or the batter ends the plate appearance, so execution on both sides is at maximum pressure.
+
+---
+
+## How to Communicate This to Replit
+
+Here's a direct prompt addition you can give Replit to build this into the AI opponent or difficulty system:
+
+---
+
+> **Pitching AI logic — location and speed strategy:**
+>
+> The CPU batter and difficulty system should use the following real baseball strategy:
+>
+> **Danger zones:** The center of the strike zone ("heart of the plate") is dangerous — pitches here are easiest to hit. Corners and edges are safer. Down and away is the most effective location overall.
+>
+> **Zone scoring:** Weight each of the 9 strike zone cells by difficulty. Center = high hit probability. Corners = low hit probability. Just off the plate = chase opportunity when ahead in count.
+>
+> **Count logic:**
+> - Pitcher's count (0-2, 1-2): throw just outside the zone to bait a chase, or go to a corner
+> - Neutral count (1-1, 0-1): mix pitch types, work edges
+> - Hitter's count (2-0, 3-1, 3-2): must throw a strike — fastball expected, so a changeup here is high-risk/high-reward
+>
+> **Speed mixing:** Never throw the same pitch type more than twice in a row. After two fastballs, the next pitch should be offspeed. A changeup should look like a fastball (same gesture speed) but arrive slower and lower.
+>
+> **Tunneling bonus:** If two consecutive pitches start in the same zone but end in different zones (e.g., fastball high-in followed by curveball low-away), the batter's reaction time penalty increases — reward this with a higher strikeout probability.
+>
+> **Inside/outside balance:** Pitching exclusively outside becomes predictable. The AI should occasionally throw inside to "set up" an outside pitch.

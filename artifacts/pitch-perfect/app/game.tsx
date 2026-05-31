@@ -26,8 +26,11 @@ import {
   calculatePitchOutcome,
   calculatePoints,
   calculateSequenceMultiplier,
+  evaluateStrategyReward,
+  getCountSituation,
   isPerfectAccuracy,
   isPerfectPower,
+  readStrategy,
 } from '@/utils/gameLogic';
 import { usePitcher } from '@/context/PitcherContext';
 import { StadiumBackground } from '@/components/StadiumBackground';
@@ -40,6 +43,7 @@ import { PitchTypeSelector } from '@/components/PitchTypeSelector';
 import { GameHUD } from '@/components/GameHUD';
 import { PitchResultOverlay } from '@/components/PitchResultOverlay';
 import { SequenceBonus } from '@/components/SequenceBonus';
+import { CountBanner } from '@/components/CountBanner';
 
 // ─── Layout constants ────────────────────────────────────────────────────────
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -227,9 +231,10 @@ export default function GameScreen() {
     const curStr    = strikesRef.current;
     const curBalls  = ballsRef.current;
 
+    const history = pitchHistoryRef.current;
     const outcome = calculatePitchOutcome(
       pitchType, zone, powerScore, accuracyScore,
-      profile.stats, curStr, curBalls,
+      profile.stats, curStr, curBalls, history,
     );
 
     let newStrikes = curStr;
@@ -242,9 +247,13 @@ export default function GameScreen() {
     const isKOLooking = isKO && outcome === 'strike_called';
     const isWalk      = outcome === 'ball' && newBalls >= 4;
 
-    const { multiplier, label: seq } = calculateSequenceMultiplier(pitchHistoryRef.current);
+    const strat = readStrategy(pitchType, zone, curBalls, curStr, history);
+    const { bonus: stratBonus, labels: stratLabels, isPayoffWin } =
+      evaluateStrategyReward(strat, outcome, isKO);
+
+    const { multiplier, label: seq } = calculateSequenceMultiplier(history);
     const { base, bonus, total } = calculatePoints(
-      outcome, powerScore, accuracyScore, isKO, isKOLooking, isWalk, multiplier,
+      outcome, powerScore, accuracyScore, isKO, isKOLooking, isWalk, multiplier, stratBonus,
     );
 
     const newScore = scoreRef.current + total;
@@ -266,6 +275,8 @@ export default function GameScreen() {
       isPerfectAccuracy: isPerfectAccuracy(accuracyScore),
       isKO, isKOLooking,
       sequenceLabel: seq,
+      strategyLabels: stratLabels,
+      isPayoffPitch: isPayoffWin,
     };
 
     phaseRef.current = 'result';
@@ -397,6 +408,11 @@ export default function GameScreen() {
 
       {/* ── BOTTOM PANEL ─────────────────────────────────── */}
       <View style={[styles.bottomPanel, { paddingBottom: bottomPad + 8 }]}>
+        {/* Count-situation banner — coaches the strategy for the current count */}
+        {phase === 'selecting' && (
+          <CountBanner situation={getCountSituation(balls, strikes)} />
+        )}
+
         {/* Pitch type selector — shown while selecting */}
         {(phase === 'selecting') && (
           <PitchTypeSelector

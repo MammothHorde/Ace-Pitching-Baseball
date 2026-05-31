@@ -49,6 +49,12 @@ export function PitchResultOverlay({ result, visible }: Props) {
           </View>
         )}
 
+        {result.isPayoffPitch && (
+          <View style={styles.payoffBadge}>
+            <Text style={styles.payoffTxt}>🔥 PAYOFF PITCH WON</Text>
+          </View>
+        )}
+
         {result.totalPoints > 0 && (
           <View style={styles.ptsRow}>
             <Text style={styles.ptsVal}>+{result.totalPoints}</Text>
@@ -70,6 +76,16 @@ export function PitchResultOverlay({ result, visible }: Props) {
             </View>
           )}
         </View>
+
+        {result.strategyLabels.length > 0 && (
+          <View style={styles.stratRow}>
+            {result.strategyLabels.map(l => (
+              <View key={l} style={styles.stratChip}>
+                <Text style={styles.stratChipTxt}>{l}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {result.sequenceLabel !== '' && (
           <Text style={styles.seqLabel}>{result.sequenceLabel}</Text>
@@ -108,5 +124,25 @@ const styles = StyleSheet.create({
   bonusRow: { flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap', justifyContent: 'center' },
   chip:     { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   chipTxt:  { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
+  payoffBadge: {
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,71,87,0.22)',
+    borderWidth: 1,
+    borderColor: '#FF4757',
+  },
+  payoffTxt: { color: '#FF6B6B', fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
+  stratRow:  { flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap', justifyContent: 'center' },
+  stratChip: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: 'rgba(83,82,237,0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(124,123,255,0.5)',
+  },
+  stratChipTxt: { color: '#9D9CFF', fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
   seqLabel: { color: '#FF9800', fontSize: 11, fontWeight: '700', marginTop: 8, letterSpacing: 0.5 },
 });
