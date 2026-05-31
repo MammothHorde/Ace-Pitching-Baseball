@@ -40,7 +40,7 @@ export function PowerMeter({ level }: PowerMeterProps) {
         <View style={[styles.tickMark, { left: '60%' }]} />
         <View style={[styles.tickMark, { left: '88%' }]} />
       </View>
-      <Text style={styles.hint}>Release to lock power</Text>
+      <Text style={styles.hint}>Hold anywhere · release in the green zone</Text>
     </View>
   );
 }

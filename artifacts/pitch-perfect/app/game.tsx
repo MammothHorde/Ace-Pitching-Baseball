@@ -463,8 +463,11 @@ export default function GameScreen() {
                   end={{ x: 1, y: 0 }}
                   style={styles.pitchBtn}
                 >
-                  <MaterialCommunityIcons name="baseball" size={26} color="#fff" />
-                  <Text style={styles.pitchBtnText}>HOLD TO PITCH</Text>
+                  <View style={styles.pitchCueRow}>
+                    <MaterialCommunityIcons name="gesture-tap-hold" size={26} color="#fff" />
+                    <Text style={styles.pitchBtnText}>PRESS &amp; HOLD ANYWHERE</Text>
+                  </View>
+                  <Text style={styles.pitchBtnSub}>Release when power hits the green zone</Text>
                 </LinearGradient>
               )}
               {phase === 'selecting' && !canPitch && (
@@ -558,18 +561,28 @@ const styles = StyleSheet.create({
     minHeight: 110,
   },
   pitchBtn: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20,
-    gap: 10,
+    paddingVertical: 18,
+    gap: 4,
     borderRadius: 20,
+  },
+  pitchCueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   pitchBtnText: {
     color: '#fff',
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: '900',
-    letterSpacing: 1.4,
+    letterSpacing: 1.2,
+  },
+  pitchBtnSub: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
   promptBox: {
     alignItems: 'center',
