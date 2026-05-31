@@ -1,10 +1,10 @@
 export type PitchType = 'fastball' | 'curveball' | 'slider' | 'changeup' | 'splitter' | 'cutter';
 export type ZoneId =
-  | 1 | 2 | 3
-  | 4 | 5 | 6
-  | 7 | 8 | 9
-  | 10 | 11 | 12
-  | 13 | 14 | 15;
+  | 1  | 2  | 3  | 4  | 5
+  | 6  | 7  | 8  | 9  | 10
+  | 11 | 12 | 13 | 14 | 15
+  | 16 | 17 | 18 | 19 | 20
+  | 21 | 22 | 23 | 24 | 25;
 export type GamePhase = 'selecting' | 'power' | 'accuracy' | 'result' | 'inning_break' | 'game_over';
 export type PitchOutcome = 'strike_called' | 'strike_swinging' | 'ball' | 'foul' | 'hit';
 export type PitchingStyle = 'classic' | 'total_control';

@@ -41,19 +41,32 @@ export function getAvailablePoints(profile: { lifetimePoints: number; spentPoint
 //   • Sequence — never be predictable; tunnel pitches off the same look;
 //     the count dictates the plan, peaking at the 3-2 "payoff pitch".
 
-// 3-wide × 5-tall strike-zone grid (15 cells, numbered row-major top→bottom):
-//    1  2  3   (top)
-//    4  5  6
-//    7  8  9   (middle)
-//   10 11 12
-//   13 14 15   (bottom)
-export const CORNER_ZONES = new Set<ZoneId>([1, 3, 13, 15]); // four extreme corners
-export const EDGE_ZONES   = new Set<ZoneId>([2, 4, 6, 7, 9, 10, 12, 14]); // border, non-corner
-export const HEART_ZONE: ZoneId = 8; // dead center — most hittable
-export const SOFT_HEART  = new Set<ZoneId>([5, 11]); // center column, near the middle
-export const HIGH_ZONES  = new Set<ZoneId>([1, 2, 3, 4, 5, 6]);     // top two tiers
-export const LOW_ZONES   = new Set<ZoneId>([10, 11, 12, 13, 14, 15]); // bottom two tiers
-const DOWN_AND_AWAY: ZoneId = 15; // low-outside corner — the premium location
+// 5-wide × 5-tall strike-zone grid (25 cells, numbered row-major top→bottom):
+//    1  2  3  4  5   (top)
+//    6  7  8  9 10
+//   11 12 13 14 15   (middle)
+//   16 17 18 19 20
+//   21 22 23 24 25   (bottom)
+const ZONE_GRID = 5;
+const zCol = (z: ZoneId) => (z - 1) % ZONE_GRID;        // 0 (inside) … 4 (outside)
+const zRow = (z: ZoneId) => Math.floor((z - 1) / ZONE_GRID); // 0 (top) … 4 (bottom)
+const ALL_ZONES = Array.from({ length: ZONE_GRID * ZONE_GRID }, (_, i) => (i + 1) as ZoneId);
+
+const isCorner = (z: ZoneId) =>
+  (zCol(z) === 0 || zCol(z) === ZONE_GRID - 1) && (zRow(z) === 0 || zRow(z) === ZONE_GRID - 1);
+const isBorder = (z: ZoneId) =>
+  zCol(z) === 0 || zCol(z) === ZONE_GRID - 1 || zRow(z) === 0 || zRow(z) === ZONE_GRID - 1;
+
+export const CORNER_ZONES = new Set<ZoneId>(ALL_ZONES.filter(isCorner)); // 1, 5, 21, 25
+export const EDGE_ZONES   = new Set<ZoneId>(ALL_ZONES.filter(z => isBorder(z) && !isCorner(z)));
+export const HEART_ZONE: ZoneId = 13; // dead center — most hittable
+// Inner 3×3 ring around dead center — still very hittable.
+export const SOFT_HEART  = new Set<ZoneId>(
+  ALL_ZONES.filter(z => !isBorder(z) && z !== HEART_ZONE),
+);
+export const HIGH_ZONES  = new Set<ZoneId>(ALL_ZONES.filter(z => zRow(z) <= 1)); // top two tiers
+export const LOW_ZONES   = new Set<ZoneId>(ALL_ZONES.filter(z => zRow(z) >= 3)); // bottom two tiers
+const DOWN_AND_AWAY: ZoneId = 25; // low-outside corner — the premium location
 
 const OFFSPEED_PITCHES = new Set<PitchType>(['curveball', 'slider', 'changeup', 'splitter']);
 
@@ -249,10 +262,10 @@ export function calculateSequenceMultiplier(history: PitchRecord[]): { multiplie
   const recent = history.slice(-5);
   const types = new Set(recent.map(p => p.type));
   const getQuadrant = (z: ZoneId): string => {
-    const col = (z - 1) % 3;          // 0 = inside, 1 = middle, 2 = outside
-    const row = Math.floor((z - 1) / 3); // 0 (top) … 4 (bottom)
-    if (col === 0) return 'inside';
-    if (col === 2) return 'outside';
+    const col = zCol(z); // 0 (inside) … 4 (outside)
+    const row = zRow(z); // 0 (top) … 4 (bottom)
+    if (col <= 1) return 'inside';
+    if (col >= 3) return 'outside';
     return row <= 1 ? 'high' : 'low';
   };
   const locations = new Set(recent.map(p => getQuadrant(p.zone)));

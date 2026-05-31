@@ -2,21 +2,30 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ZoneId } from '@/constants/GameTypes';
 
-const ZONE_LABELS: Record<ZoneId, string> = {
-  1:  'HI\nIN',  2:  'HIGH',  3:  'HI\nOUT',
-  4:  'UP\nIN',  5:  'UP',    6:  'UP\nOUT',
-  7:  'IN',      8:  '•',     9:  'OUT',
-  10: 'LO\nIN',  11: 'LOW',   12: 'LO\nOUT',
-  13: 'DN\nIN',  14: 'DOWN',  15: 'DN\nOUT',
-};
+// 5-wide × 5-tall grid, numbered row-major 1…25.
+const GRID = 5;
+const COL_LABEL = ['IN', 'in', 'MID', 'out', 'OUT'];
+const ROW_LABEL = ['HI', 'UP', 'MID', 'LO', 'DN'];
 
-const ZONE_TYPE: Record<ZoneId, 'corner' | 'edge' | 'center'> = {
-  1:  'corner', 2:  'edge',   3:  'corner',
-  4:  'edge',   5:  'center', 6:  'edge',
-  7:  'edge',   8:  'center', 9:  'edge',
-  10: 'edge',   11: 'center', 12: 'edge',
-  13: 'corner', 14: 'edge',   15: 'corner',
-};
+const zoneCol = (z: ZoneId) => (z - 1) % GRID;        // 0 (inside) … 4 (outside)
+const zoneRow = (z: ZoneId) => Math.floor((z - 1) / GRID); // 0 (top) … 4 (bottom)
+
+function zoneLabel(z: ZoneId): string {
+  const col = zoneCol(z);
+  const row = zoneRow(z);
+  if (col === 2 && row === 2) return '•'; // dead center
+  return `${ROW_LABEL[row]}\n${COL_LABEL[col]}`;
+}
+
+function zoneType(z: ZoneId): 'corner' | 'edge' | 'center' {
+  const col = zoneCol(z);
+  const row = zoneRow(z);
+  const colEdge = col === 0 || col === GRID - 1;
+  const rowEdge = row === 0 || row === GRID - 1;
+  if (colEdge && rowEdge) return 'corner';        // four extreme corners
+  if (colEdge || rowEdge) return 'edge';          // rest of the border
+  return 'center';                                // inner 3×3 heart region
+}
 
 interface StrikeZoneProps {
   selectedZone: ZoneId | null;
@@ -26,10 +35,10 @@ interface StrikeZoneProps {
 }
 
 export function StrikeZone({ selectedZone, onSelectZone, disabled, compact }: StrikeZoneProps) {
-  const zones: ZoneId[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-  const cellW = compact ? 56 : 64;
-  const cellH = compact ? 30 : 40;
-  const gridW = cellW * 3;
+  const zones = Array.from({ length: GRID * GRID }, (_, i) => (i + 1) as ZoneId);
+  const cellW = compact ? 34 : 48;
+  const cellH = compact ? 30 : 44;
+  const gridW = cellW * GRID;
 
   return (
     <View style={[styles.container, compact && styles.containerCompact]}>
@@ -37,7 +46,7 @@ export function StrikeZone({ selectedZone, onSelectZone, disabled, compact }: St
       <View style={[styles.grid, { width: gridW }, compact && styles.gridCompact]}>
         {zones.map(zone => {
           const isSelected = selectedZone === zone;
-          const type = ZONE_TYPE[zone];
+          const type = zoneType(zone);
           let bg = compact ? 'rgba(11,30,61,0.72)' : 'rgba(22,40,71,0.88)';
           let borderColor = compact ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.15)';
           if (type === 'corner') bg = compact ? 'rgba(255,204,0,0.10)' : 'rgba(255,204,0,0.12)';
@@ -60,7 +69,7 @@ export function StrikeZone({ selectedZone, onSelectZone, disabled, compact }: St
                   { color: isSelected ? '#0B1E3D' : 'rgba(255,255,255,0.75)' },
                 ]}
               >
-                {compact ? '' : ZONE_LABELS[zone]}
+                {compact ? '' : zoneLabel(zone)}
                 {compact && isSelected ? '✦' : compact ? '' : ''}
               </Text>
               {compact && isSelected && (
