@@ -3,98 +3,99 @@ import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface PowerMeterProps {
+  /** 0…1 power level (oscillates up/down the y-axis while active). */
   level: number;
+  /** When false the meter is shown but idle/locked (no live animation). */
+  active?: boolean;
 }
 
-export function PowerMeter({ level }: PowerMeterProps) {
+export function PowerMeter({ level, active = true }: PowerMeterProps) {
   const isPerfect = level >= 0.60 && level <= 0.88;
   const isWeak = level < 0.30;
   const isMax = level > 0.92;
   const pct = Math.round(level * 100);
 
   let barColors: [string, string] = ['#FFCC00', '#F39C12'];
-  let label = 'BUILDING...';
-  let labelColor = '#FFCC00';
-
-  if (isWeak) { barColors = ['#FF6B6B', '#FF4757']; label = 'TOO WEAK'; labelColor = '#FF6B6B'; }
-  else if (isPerfect) { barColors = ['#2ED573', '#00B894']; label = '✦ PERFECT ZONE ✦'; labelColor = '#2ED573'; }
-  else if (isMax) { barColors = ['#FF4757', '#C0392B']; label = 'MAXED OUT!'; labelColor = '#FF4757'; }
+  let valueColor = '#FFCC00';
+  if (isWeak) { barColors = ['#FF6B6B', '#FF4757']; valueColor = '#FF6B6B'; }
+  else if (isPerfect) { barColors = ['#2ED573', '#00B894']; valueColor = '#2ED573'; }
+  else if (isMax) { barColors = ['#FF4757', '#C0392B']; valueColor = '#FF4757'; }
 
   return (
     <View style={styles.wrapper}>
-      <View style={styles.labelRow}>
-        <Text style={styles.title}>POWER</Text>
-        <Text style={[styles.dynamicLabel, { color: labelColor }]}>{label}</Text>
-        <Text style={styles.pct}>{pct}%</Text>
-      </View>
+      <Text style={styles.title}>POWER</Text>
+
       <View style={styles.track}>
-        <View style={styles.perfectZoneBg} />
-        <View style={[styles.fillWrap, { width: `${pct}%` }]}>
+        {/* Perfect band: 60%–88% measured from the bottom. */}
+        <View style={styles.perfectZone} />
+        {/* Fill rises from the bottom; its height tracks the live level. */}
+        <View style={[styles.fillWrap, { height: `${pct}%` }]}>
           <LinearGradient
             colors={barColors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
+            start={{ x: 0, y: 1 }}
+            end={{ x: 0, y: 0 }}
             style={StyleSheet.absoluteFill}
           />
+          <View style={[styles.cap, { backgroundColor: '#FFFFFF', opacity: active ? 1 : 0.5 }]} />
         </View>
-        <View style={[styles.tickMark, { left: '60%' }]} />
-        <View style={[styles.tickMark, { left: '88%' }]} />
       </View>
-      <Text style={styles.hint}>Hold anywhere · release in the green zone</Text>
+
+      <Text style={[styles.pct, { color: valueColor }]}>{pct}%</Text>
     </View>
   );
 }
 
+const TRACK_H = 152;
+
 const styles = StyleSheet.create({
-  wrapper: { width: '100%', paddingHorizontal: 4 },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  wrapper: { alignItems: 'center', width: 58 },
+  title: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
     marginBottom: 8,
   },
-  title: { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: '800', letterSpacing: 1 },
-  dynamicLabel: { fontSize: 12, fontWeight: '900', letterSpacing: 0.3 },
-  pct: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '700', minWidth: 36, textAlign: 'right' },
   track: {
-    height: 32,
+    width: 34,
+    height: TRACK_H,
     backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 16,
+    borderRadius: 17,
     overflow: 'hidden',
     position: 'relative',
   },
-  perfectZoneBg: {
+  perfectZone: {
     position: 'absolute',
-    left: '60%',
-    width: '28%',
-    top: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(46,213,115,0.12)',
-    borderLeftWidth: 2,
-    borderRightWidth: 2,
-    borderColor: 'rgba(46,213,115,0.45)',
+    left: 0,
+    right: 0,
+    bottom: '60%',
+    height: '28%',
+    backgroundColor: 'rgba(46,213,115,0.14)',
+    borderTopWidth: 2,
+    borderBottomWidth: 2,
+    borderColor: 'rgba(46,213,115,0.5)',
   },
   fillWrap: {
     position: 'absolute',
     left: 0,
-    top: 0,
+    right: 0,
     bottom: 0,
-    borderRadius: 16,
+    borderRadius: 17,
     overflow: 'hidden',
   },
-  tickMark: {
+  cap: {
     position: 'absolute',
-    top: 4,
-    bottom: 4,
-    width: 2,
-    backgroundColor: 'rgba(46,213,115,0.7)',
-    borderRadius: 1,
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    borderRadius: 2,
   },
-  hint: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 11,
+  pct: {
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: 8,
+    minWidth: 40,
     textAlign: 'center',
-    marginTop: 6,
-    letterSpacing: 0.3,
   },
 });

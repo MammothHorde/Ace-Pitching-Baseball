@@ -122,7 +122,7 @@ export default function GameScreen() {
   const accuracyIntervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const lockedPowerRef       = useRef(0);
   const _startPowerRef       = useRef<() => void>(() => {});
-  const _stopPowerRef        = useRef<() => void>(() => {});
+  const _lockPowerRef        = useRef<() => void>(() => {});
   const _lockAccuracyRef     = useRef<() => void>(() => {});
 
   // Single screen-level touch handler. Children (zone grid, pitch selector,
@@ -140,13 +140,8 @@ export default function GameScreen() {
       onPanResponderGrant: () => {
         const p = phaseRef.current;
         if (p === 'selecting') _startPowerRef.current();
+        else if (p === 'power') _lockPowerRef.current();
         else if (p === 'accuracy') _lockAccuracyRef.current();
-      },
-      onPanResponderRelease: () => {
-        if (phaseRef.current === 'power') _stopPowerRef.current();
-      },
-      onPanResponderTerminate: () => {
-        if (phaseRef.current === 'power') _stopPowerRef.current();
       },
     }),
   ).current;
@@ -156,8 +151,8 @@ export default function GameScreen() {
   const topOffset = (Platform.OS === 'web' ? 67 : insets.top) + 82;
   const bottomPad = Platform.OS === 'web' ? 34 : insets.bottom;
 
-  const powerFillDuration    = 1500 + profile.stats.stamina * 200;
   const diffSpeedMult        = 1.4 - 0.85 * settings.difficulty;  // 1.4 easy … 0.55 hard
+  const powerCycleDuration    = (820 + profile.stats.stamina * 90) * diffSpeedMult;
   const accuracyCycleDuration = (600 + profile.stats.accuracy * 100) * diffSpeedMult;
 
   const { cellW, cellH, zoneW, zoneLeft, zoneTop } = useMemo(
@@ -182,6 +177,15 @@ export default function GameScreen() {
 
   // ─── Pitch flow ──────────────────────────────────────────────────────────
 
+  // Power is a vertical meter that bounces up and down the y-axis. The player
+  // taps once to start it oscillating, then taps again to lock it — ideally
+  // inside the green perfect band.
+  function powerAt(elapsed: number) {
+    const t = (elapsed % powerCycleDuration) / powerCycleDuration;
+    // Start at the bottom (0), then rise → fall → rise…
+    return (Math.sin(t * Math.PI * 2 - Math.PI / 2) + 1) / 2;
+  }
+
   function startPower() {
     if (
       phaseRef.current !== 'selecting' ||
@@ -193,32 +197,26 @@ export default function GameScreen() {
     setPhase('power');
     setPowerLevel(0);
     powerStartTimeRef.current = Date.now();
-    const duration = powerFillDuration;
 
+    if (powerIntervalRef.current) clearInterval(powerIntervalRef.current);
     powerIntervalRef.current = setInterval(() => {
       const elapsed = Date.now() - powerStartTimeRef.current;
-      const p = Math.min(elapsed / duration, 1);
-      setPowerLevel(p);
-      if (p >= 1) {
-        if (powerIntervalRef.current) clearInterval(powerIntervalRef.current);
-        powerIntervalRef.current = null;
-        _stopPowerRef.current();
-      }
+      setPowerLevel(powerAt(elapsed));
     }, 16);
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }
 
-  function stopPower() {
+  function lockPower() {
     if (phaseRef.current !== 'power') return;
     if (powerIntervalRef.current) {
       clearInterval(powerIntervalRef.current);
       powerIntervalRef.current = null;
     }
-    const elapsed = Date.now() - powerStartTimeRef.current;
-    const power = Math.min(elapsed / powerFillDuration, 1);
+    const power = powerAt(Date.now() - powerStartTimeRef.current);
     lockedPowerRef.current = power;
     setPowerLevel(power);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     startAccuracy();
   }
 
@@ -228,6 +226,7 @@ export default function GameScreen() {
     accuracyStartTimeRef.current = Date.now();
     const cycle = accuracyCycleDuration;
 
+    if (accuracyIntervalRef.current) clearInterval(accuracyIntervalRef.current);
     accuracyIntervalRef.current = setInterval(() => {
       const elapsed = Date.now() - accuracyStartTimeRef.current;
       const t = (elapsed % cycle) / cycle;
@@ -410,7 +409,7 @@ export default function GameScreen() {
 
   // PanResponder with ref-forwarding to prevent stale closures
   _startPowerRef.current   = startPower;
-  _stopPowerRef.current    = stopPower;
+  _lockPowerRef.current    = lockPower;
   _lockAccuracyRef.current = lockAccuracy;
 
   // ─── Render ──────────────────────────────────────────────────────────────
@@ -498,9 +497,9 @@ export default function GameScreen() {
         {/* Control area */}
         <View style={styles.controlArea}>
 
-          {(phase === 'selecting' || phase === 'power') && (
+          {phase === 'selecting' && (
             <View style={styles.pitchZone}>
-              {phase === 'selecting' && canPitch && (
+              {canPitch ? (
                 <LinearGradient
                   colors={['#FF6B6B', '#FF4757']}
                   start={{ x: 0, y: 0 }}
@@ -508,13 +507,12 @@ export default function GameScreen() {
                   style={styles.pitchBtn}
                 >
                   <View style={styles.pitchCueRow}>
-                    <MaterialCommunityIcons name="gesture-tap-hold" size={26} color="#fff" />
-                    <Text style={styles.pitchBtnText}>PRESS &amp; HOLD ANYWHERE</Text>
+                    <MaterialCommunityIcons name="gesture-tap" size={26} color="#fff" />
+                    <Text style={styles.pitchBtnText}>TAP ANYWHERE TO PITCH</Text>
                   </View>
-                  <Text style={styles.pitchBtnSub}>Release when power hits the green zone</Text>
+                  <Text style={styles.pitchBtnSub}>Tap to lock power, then accuracy</Text>
                 </LinearGradient>
-              )}
-              {phase === 'selecting' && !canPitch && (
+              ) : (
                 <View style={styles.promptBox}>
                   <Text style={styles.promptText}>
                     {!selectedZone
@@ -523,17 +521,24 @@ export default function GameScreen() {
                   </Text>
                 </View>
               )}
-              {phase === 'power' && (
-                <View style={styles.meterBox}>
-                  <PowerMeter level={powerLevel} />
-                </View>
-              )}
             </View>
           )}
 
-          {phase === 'accuracy' && (
-            <View style={styles.accuracyZone}>
-              <AccuracyMeter position={accuracyPos} />
+          {(phase === 'power' || phase === 'accuracy') && (
+            <View>
+              <View style={styles.metersRow}>
+                <View style={phase === 'power' ? undefined : styles.meterIdle}>
+                  <PowerMeter level={powerLevel} active={phase === 'power'} />
+                </View>
+                <View style={[styles.accuracyCol, phase === 'accuracy' ? undefined : styles.meterIdle]}>
+                  <AccuracyMeter position={accuracyPos} active={phase === 'accuracy'} />
+                </View>
+              </View>
+              <Text style={styles.phaseHint}>
+                {phase === 'power'
+                  ? 'TAP to lock POWER — stop it in the green zone'
+                  : 'TAP to lock ACCURACY — center the needle'}
+              </Text>
             </View>
           )}
 
@@ -595,14 +600,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pitchZone: { borderRadius: 20, overflow: 'hidden', minHeight: 80 },
-  meterBox: { backgroundColor: 'rgba(11,30,61,0.85)', borderRadius: 20, padding: 20 },
-  accuracyZone: {
-    flex: 1,
-    justifyContent: 'center',
+  metersRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 18,
     backgroundColor: 'rgba(11,30,61,0.85)',
     borderRadius: 20,
-    padding: 20,
-    minHeight: 110,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+  },
+  accuracyCol: { flex: 1 },
+  meterIdle: { opacity: 0.4 },
+  phaseHint: {
+    color: '#FFCC00',
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 12,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
   pitchBtn: {
     alignItems: 'center',

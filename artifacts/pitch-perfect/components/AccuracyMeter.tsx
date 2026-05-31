@@ -4,9 +4,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 interface AccuracyMeterProps {
   position: number;
+  /** When false the meter is shown but idle (no live hint). */
+  active?: boolean;
 }
 
-export function AccuracyMeter({ position }: AccuracyMeterProps) {
+export function AccuracyMeter({ position, active = true }: AccuracyMeterProps) {
   const distFromCenter = Math.abs(position - 0.5) * 2;
   const score = 1 - distFromCenter;
 
@@ -38,7 +40,7 @@ export function AccuracyMeter({ position }: AccuracyMeterProps) {
         <View style={[styles.needle, { left: needleLeft }]} />
       </View>
 
-      <Text style={styles.hint}>TAP ANYWHERE to lock!</Text>
+      <Text style={styles.hint}>{active ? 'AIM!' : 'Up next…'}</Text>
     </View>
   );
 }
