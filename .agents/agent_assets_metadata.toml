@@ -17,16 +17,16 @@ title = "generated_image"
 id = "IoT07ubf2jGhkTvbC7P9M"
 uri = "file://artifacts/pitch-perfect/assets/images/batter_1.png"
 type = "image"
-title = "batter-red-jersey"
+title = "batter-red-ready-stance"
 
 [[generated]]
 id = "P9PwEpAUyY9awYDZ1a2Jt"
 uri = "file://artifacts/pitch-perfect/assets/images/batter_2.png"
 type = "image"
-title = "batter-navy-jersey"
+title = "batter-navy-lefty-stance"
 
 [[generated]]
 id = "8RG1ziIV6WIbzGdzgNSew"
 uri = "file://artifacts/pitch-perfect/assets/images/batter_3.png"
 type = "image"
-title = "batter-black-green-jersey"
+title = "batter-black-green-power-stance"

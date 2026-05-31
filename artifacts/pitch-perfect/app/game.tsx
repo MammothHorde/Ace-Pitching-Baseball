@@ -49,9 +49,12 @@ const ZONE_CELL_W = 60;
 const ZONE_CELL_H = 40;
 const ZONE_W = ZONE_CELL_W * 3;
 const ZONE_LEFT = (SCREEN_W - ZONE_W) / 2;
-const ZONE_TOP = SCENE_H * 0.43;
+// HUD card ends at ~149px (web) / ~120px (native) — push zone into visible area
+const HUD_APPROX = Platform.OS === 'web' ? 149 : 120;
+const VISIBLE_H = SCENE_H - HUD_APPROX;
+const ZONE_TOP = HUD_APPROX + VISIBLE_H * 0.30;   // catcher-glove level
 const BALL_FROM_X = SCREEN_W / 2;
-const BALL_FROM_Y = SCENE_H * 0.88;
+const BALL_FROM_Y = SCENE_H * 0.96;
 
 const ZONE_COL: Record<ZoneId, number> = { 1:0, 2:1, 3:2, 4:0, 5:1, 6:2, 7:0, 8:1, 9:2 };
 const ZONE_ROW: Record<ZoneId, number> = { 1:0, 2:0, 3:0, 4:1, 5:1, 6:1, 7:2, 8:2, 9:2 };
@@ -294,7 +297,7 @@ export default function GameScreen() {
 
       {/* ── SCENE (upper portion) ─────────────────────────── */}
       <View style={[styles.sceneArea, { height: SCENE_H }]}>
-        <BatterScene batterIndex={batterIndex} />
+        <BatterScene batterIndex={batterIndex} visibleTop={topOffset} />
 
         {/* Sequence combo badge */}
         <View style={[styles.seqWrap, { top: topOffset + 4 }]}>
