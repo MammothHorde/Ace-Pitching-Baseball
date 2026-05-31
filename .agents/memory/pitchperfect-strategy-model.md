@@ -22,3 +22,22 @@ Real-baseball strategy (location / speed / sequencing) feeds two separate paths:
   `base * multiplier` step or they compound.
 - Payoff "win" is **success-gated**: only a strike/swinging-strike at 3-2 sets
   `isPayoffWin` (a foul at 3-2 must not show the won badge).
+
+## Strike-zone grid geometry (the source of truth)
+
+The pitch grid is **5×5 (25 cells)** numbered row-major 1…25. The **inner 3×3**
+(cells 7,8,9,12,13,14,17,18,19) is the actual **strike zone**; the outer ring is
+**out of the zone (ball territory)**.
+
+- Geometry is computed, not hardcoded: `zCol = (z-1)%5`, `zRow = floor((z-1)/5)`.
+  `inStrikeZone` = cols 1-3 & rows 1-3. To change grid size, change the `GRID`/
+  `ZONE_GRID` constant in BOTH `components/StrikeZone.tsx` and `app/game.tsx`.
+- **Cell size must stay in sync** between `StrikeZone` compact dims and game.tsx
+  `ZONE_CELL_W/H` (currently 34×30) — ball targeting (`getZoneCenter`) relies on it.
+- Strategy sets derive from the strike zone: `CORNER_ZONES`={7,9,17,19} (paint),
+  `EDGE_ZONES`={8,12,14,18}, `HEART_ZONE`=13, `DOWN_AND_AWAY`=19.
+  **Why:** "painting the corner" must mean the corner of the *strike zone*, not
+  the extreme 5×5 corners (which are balls).
+- **Taken pitch outside `STRIKE_ZONE` is always a ball** (no-swing branch). Only
+  in-zone taken pitches can be called strikes. Out-of-zone also lowers swing &
+  contact prob (chase swing-and-miss), softened at 2 strikes.

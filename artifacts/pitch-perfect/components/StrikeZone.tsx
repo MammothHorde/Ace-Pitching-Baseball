@@ -10,6 +10,11 @@ const ROW_LABEL = ['HI', 'UP', 'MID', 'LO', 'DN'];
 const zoneCol = (z: ZoneId) => (z - 1) % GRID;        // 0 (inside) … 4 (outside)
 const zoneRow = (z: ZoneId) => Math.floor((z - 1) / GRID); // 0 (top) … 4 (bottom)
 
+// Inner 3×3 (cols 1-3, rows 1-3) is the actual strike zone; the outer ring is
+// out of the zone (ball territory).
+const inStrikeZone = (z: ZoneId) =>
+  zoneCol(z) >= 1 && zoneCol(z) <= 3 && zoneRow(z) >= 1 && zoneRow(z) <= 3;
+
 function zoneLabel(z: ZoneId): string {
   const col = zoneCol(z);
   const row = zoneRow(z);
@@ -17,14 +22,15 @@ function zoneLabel(z: ZoneId): string {
   return `${ROW_LABEL[row]}\n${COL_LABEL[col]}`;
 }
 
-function zoneType(z: ZoneId): 'corner' | 'edge' | 'center' {
+function zoneType(z: ZoneId): 'corner' | 'edge' | 'center' | 'ball' {
+  if (!inStrikeZone(z)) return 'ball';            // outer ring — off the plate
   const col = zoneCol(z);
   const row = zoneRow(z);
-  const colEdge = col === 0 || col === GRID - 1;
-  const rowEdge = row === 0 || row === GRID - 1;
-  if (colEdge && rowEdge) return 'corner';        // four extreme corners
-  if (colEdge || rowEdge) return 'edge';          // rest of the border
-  return 'center';                                // inner 3×3 heart region
+  const colEdge = col === 1 || col === 3;
+  const rowEdge = row === 1 || row === 3;
+  if (colEdge && rowEdge) return 'corner';        // strike-zone corners (paint)
+  if (col === 2 && row === 2) return 'center';     // dead center — heart
+  return 'edge';                                  // strike-zone edges
 }
 
 interface StrikeZoneProps {
@@ -47,10 +53,15 @@ export function StrikeZone({ selectedZone, onSelectZone, disabled, compact }: St
         {zones.map(zone => {
           const isSelected = selectedZone === zone;
           const type = zoneType(zone);
-          let bg = compact ? 'rgba(11,30,61,0.72)' : 'rgba(22,40,71,0.88)';
-          let borderColor = compact ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.15)';
-          if (type === 'corner') bg = compact ? 'rgba(255,204,0,0.10)' : 'rgba(255,204,0,0.12)';
-          if (type === 'center') bg = compact ? 'rgba(255,71,87,0.10)' : 'rgba(255,71,87,0.12)';
+          // Out-of-zone (ball) cells read dim; strike-zone cells read brighter.
+          let bg = type === 'ball'
+            ? (compact ? 'rgba(11,30,61,0.32)' : 'rgba(22,40,71,0.40)')
+            : (compact ? 'rgba(46,213,115,0.12)' : 'rgba(46,213,115,0.14)');
+          let borderColor = type === 'ball'
+            ? (compact ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.10)')
+            : (compact ? 'rgba(46,213,115,0.30)' : 'rgba(46,213,115,0.30)');
+          if (type === 'corner') bg = compact ? 'rgba(255,204,0,0.16)' : 'rgba(255,204,0,0.18)';
+          if (type === 'center') bg = compact ? 'rgba(255,71,87,0.18)' : 'rgba(255,71,87,0.20)';
           if (isSelected) { bg = '#FFCC00'; borderColor = '#FFCC00'; }
 
           return (
@@ -78,9 +89,26 @@ export function StrikeZone({ selectedZone, onSelectZone, disabled, compact }: St
             </TouchableOpacity>
           );
         })}
+        {/* Highlighted strike zone — the inner 3×3 box */}
+        <View
+          style={[
+            styles.strikeBox,
+            compact && styles.strikeBoxCompact,
+            {
+              left: cellW,
+              top: cellH,
+              width: cellW * 3,
+              height: cellH * 3,
+            },
+          ]}
+        />
       </View>
       {!compact && (
         <View style={styles.legend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: 'rgba(46,213,115,0.6)' }]} />
+            <Text style={styles.legendText}>Strike zone</Text>
+          </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: 'rgba(255,204,0,0.5)' }]} />
             <Text style={styles.legendText}>Corner — harder to hit</Text>
@@ -139,6 +167,18 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#0B1E3D',
+  },
+  strikeBox: {
+    position: 'absolute',
+    pointerEvents: 'none',
+    borderWidth: 2.5,
+    borderColor: '#2ED573',
+    borderRadius: 4,
+    backgroundColor: 'transparent',
+  },
+  strikeBoxCompact: {
+    borderWidth: 2,
+    borderColor: 'rgba(46,213,115,0.95)',
   },
   legend: {
     flexDirection: 'row',

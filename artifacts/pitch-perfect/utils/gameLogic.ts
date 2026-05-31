@@ -41,32 +41,40 @@ export function getAvailablePoints(profile: { lifetimePoints: number; spentPoint
 //   • Sequence — never be predictable; tunnel pitches off the same look;
 //     the count dictates the plan, peaking at the 3-2 "payoff pitch".
 
-// 5-wide × 5-tall strike-zone grid (25 cells, numbered row-major top→bottom):
-//    1  2  3  4  5   (top)
-//    6  7  8  9 10
-//   11 12 13 14 15   (middle)
-//   16 17 18 19 20
-//   21 22 23 24 25   (bottom)
+// 5-wide × 5-tall pitch grid (25 cells, numbered row-major top→bottom). The
+// inner 3×3 (cells 7-9, 12-14, 17-19) is the actual STRIKE ZONE; the outer ring
+// is out of the zone — a taken pitch there is a ball.
+//    1  2  3  4  5   (top — out of zone)
+//    6 [7  8  9]10
+//   11[12 13 14]15   (middle — 13 is dead center)
+//   16[17 18 19]20
+//   21 22 23 24 25   (bottom — out of zone)
 const ZONE_GRID = 5;
 const zCol = (z: ZoneId) => (z - 1) % ZONE_GRID;        // 0 (inside) … 4 (outside)
 const zRow = (z: ZoneId) => Math.floor((z - 1) / ZONE_GRID); // 0 (top) … 4 (bottom)
 const ALL_ZONES = Array.from({ length: ZONE_GRID * ZONE_GRID }, (_, i) => (i + 1) as ZoneId);
 
-const isCorner = (z: ZoneId) =>
-  (zCol(z) === 0 || zCol(z) === ZONE_GRID - 1) && (zRow(z) === 0 || zRow(z) === ZONE_GRID - 1);
-const isBorder = (z: ZoneId) =>
-  zCol(z) === 0 || zCol(z) === ZONE_GRID - 1 || zRow(z) === 0 || zRow(z) === ZONE_GRID - 1;
+// Inner 3×3 = the strike zone (columns 1-3, rows 1-3).
+const inStrikeZone = (z: ZoneId) =>
+  zCol(z) >= 1 && zCol(z) <= 3 && zRow(z) >= 1 && zRow(z) <= 3;
+// Corner of the strike zone — the "painted" edge, the nastiest strike to hit.
+const isZoneCorner = (z: ZoneId) =>
+  inStrikeZone(z) && (zCol(z) === 1 || zCol(z) === 3) && (zRow(z) === 1 || zRow(z) === 3);
 
-export const CORNER_ZONES = new Set<ZoneId>(ALL_ZONES.filter(isCorner)); // 1, 5, 21, 25
-export const EDGE_ZONES   = new Set<ZoneId>(ALL_ZONES.filter(z => isBorder(z) && !isCorner(z)));
+export const STRIKE_ZONE  = new Set<ZoneId>(ALL_ZONES.filter(inStrikeZone)); // 7-9,12-14,17-19
+export const CORNER_ZONES = new Set<ZoneId>(ALL_ZONES.filter(isZoneCorner)); // 7, 9, 17, 19
 export const HEART_ZONE: ZoneId = 13; // dead center — most hittable
-// Inner 3×3 ring around dead center — still very hittable.
-export const SOFT_HEART  = new Set<ZoneId>(
-  ALL_ZONES.filter(z => !isBorder(z) && z !== HEART_ZONE),
+// Non-corner edges of the strike zone (still strikes, a touch tougher to barrel).
+export const EDGE_ZONES   = new Set<ZoneId>(
+  ALL_ZONES.filter(z => inStrikeZone(z) && !isZoneCorner(z) && z !== HEART_ZONE), // 8, 12, 14, 18
 );
 export const HIGH_ZONES  = new Set<ZoneId>(ALL_ZONES.filter(z => zRow(z) <= 1)); // top two tiers
 export const LOW_ZONES   = new Set<ZoneId>(ALL_ZONES.filter(z => zRow(z) >= 3)); // bottom two tiers
-const DOWN_AND_AWAY: ZoneId = 25; // low-outside corner — the premium location
+const DOWN_AND_AWAY: ZoneId = 19; // low-outside corner of the strike zone — premium spot
+
+export function isInStrikeZone(zone: ZoneId): boolean {
+  return STRIKE_ZONE.has(zone);
+}
 
 const OFFSPEED_PITCHES = new Set<PitchType>(['curveball', 'slider', 'changeup', 'splitter']);
 
@@ -184,9 +192,11 @@ export function calculatePitchOutcome(
   if (strikes === 1 && balls === 0) swingProb -= 0.04;
   if (CORNER_ZONES.has(zone)) swingProb -= 0.12;
   if (zone === HEART_ZONE)    swingProb += 0.12;
-  else if (SOFT_HEART.has(zone)) swingProb += 0.06;
   if (HIGH_ZONES.has(zone))   swingProb += 0.04;
   if (LOW_ZONES.has(zone))    swingProb -= 0.04;
+  // Pitches off the plate (outside the 3×3 zone) get taken — unless 2 strikes
+  // forces the hitter to protect and chase.
+  if (!STRIKE_ZONE.has(zone)) swingProb -= strikes === 2 ? 0.10 : 0.24;
   if (accuracyScore < 0.4)  swingProb -= 0.10;
   if (accuracyScore > 0.75) swingProb += 0.06;
   // A predictable hitter sits on the pitch and ambushes it.
@@ -210,8 +220,9 @@ export function calculatePitchOutcome(
     if (strikes === 0 && balls === 0) contactProb += 0.04;
     // Location: the heart of the plate is hammered; edges and corners are safer.
     if (zone === HEART_ZONE)      contactProb += 0.10;
-    else if (SOFT_HEART.has(zone)) contactProb += 0.05;
     if (EDGE_ZONES.has(zone))     contactProb -= 0.04;
+    // Chasing a pitch out of the zone is hard to square up.
+    if (!STRIKE_ZONE.has(zone))   contactProb -= 0.10;
     if (strat.paintedCorner)      contactProb -= 0.08;
     if (strat.downAndAway)        contactProb -= 0.04;
     // Deception bonuses make the hitter miss.
@@ -226,6 +237,9 @@ export function calculatePitchOutcome(
     }
     return 'strike_swinging';
   } else {
+    // Took the pitch: only the inner 3×3 can be a called strike; off the plate
+    // (or a missed spot) is a ball.
+    if (!STRIKE_ZONE.has(zone)) return 'ball';
     return accuracyScore > 0.32 ? 'strike_called' : 'ball';
   }
 }
