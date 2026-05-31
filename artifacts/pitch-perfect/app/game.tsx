@@ -119,7 +119,6 @@ export default function GameScreen() {
   const powerIntervalRef     = useRef<ReturnType<typeof setInterval> | null>(null);
   const accuracyIntervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const lockedPowerRef       = useRef(0);
-  const _startPowerRef       = useRef<() => void>(() => {});
   const _lockPowerRef        = useRef<() => void>(() => {});
   const _lockAccuracyRef     = useRef<() => void>(() => {});
 
@@ -130,15 +129,11 @@ export default function GameScreen() {
     PanResponder.create({
       onStartShouldSetPanResponder: () => {
         const p = phaseRef.current;
-        if (p === 'selecting') {
-          return !!selectedZoneRef.current && !!selectedPitchRef.current;
-        }
         return p === 'power' || p === 'accuracy';
       },
       onPanResponderGrant: () => {
         const p = phaseRef.current;
-        if (p === 'selecting') _startPowerRef.current();
-        else if (p === 'power') _lockPowerRef.current();
+        if (p === 'power') _lockPowerRef.current();
         else if (p === 'accuracy') _lockAccuracyRef.current();
       },
     }),
@@ -172,6 +167,15 @@ export default function GameScreen() {
     if (powerIntervalRef.current)   clearInterval(powerIntervalRef.current);
     if (accuracyIntervalRef.current) clearInterval(accuracyIntervalRef.current);
   }, []);
+
+  // Once both a zone and a pitch type are chosen, kick off the power meter
+  // automatically — no extra tap needed to start it.
+  useEffect(() => {
+    if (phase === 'selecting' && selectedZone && selectedPitch) {
+      startPower();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, selectedZone, selectedPitch]);
 
   // ─── Pitch flow ──────────────────────────────────────────────────────────
 
@@ -406,7 +410,6 @@ export default function GameScreen() {
   }
 
   // PanResponder with ref-forwarding to prevent stale closures
-  _startPowerRef.current   = startPower;
   _lockPowerRef.current    = lockPower;
   _lockAccuracyRef.current = lockAccuracy;
 
