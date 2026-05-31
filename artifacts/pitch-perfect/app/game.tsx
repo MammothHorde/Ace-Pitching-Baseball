@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
+  PanResponder,
   Platform,
   StyleSheet,
   Text,
@@ -28,19 +29,17 @@ import {
   isPerfectAccuracy,
   isPerfectPower,
 } from '@/utils/gameLogic';
-import { gestureQualityLabel } from '@/utils/gestureTemplates';
 import { usePitcher } from '@/context/PitcherContext';
 import { StadiumBackground } from '@/components/StadiumBackground';
 import { BatterScene } from '@/components/BatterScene';
 import { BallFlight } from '@/components/BallFlight';
 import { StrikeZone } from '@/components/StrikeZone';
-import { GestureCanvas } from '@/components/GestureCanvas';
+import { PowerMeter } from '@/components/PowerMeter';
+import { AccuracyMeter } from '@/components/AccuracyMeter';
 import { PitchTypeSelector } from '@/components/PitchTypeSelector';
 import { GameHUD } from '@/components/GameHUD';
 import { PitchResultOverlay } from '@/components/PitchResultOverlay';
 import { SequenceBonus } from '@/components/SequenceBonus';
-import { GestureInputPanel } from '@/components/GestureInputPanel';
-import { GestureQualityLabel } from '@/components/GestureQualityLabel';
 
 // ─── Layout constants ────────────────────────────────────────────────────────
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -68,7 +67,7 @@ function getZoneCenter(zone: ZoneId) {
 
 export default function GameScreen() {
   const insets = useSafeAreaInsets();
-  const { profile, pitchingStyle, recordGameResult } = usePitcher();
+  const { profile, recordGameResult } = usePitcher();
 
   const [phase, setPhase]                       = useState<GamePhase>('selecting');
   const [inning, setInning]                     = useState(1);
@@ -86,8 +85,8 @@ export default function GameScreen() {
   const [showBallFlight, setShowBallFlight]     = useState(false);
   const [ballTarget, setBallTarget]             = useState({ x: SCREEN_W / 2, y: ZONE_TOP + 60 });
   const [batterIndex, setBatterIndex]           = useState(0);
-  const [gestureLabel, setGestureLabel]         = useState('');
-  const [showGestureLabel, setShowGestureLabel] = useState(false);
+  const [powerLevel, setPowerLevel]             = useState(0);
+  const [accuracyPos, setAccuracyPos]           = useState(0.5);
 
   // Stale-closure-safe refs
   const phaseRef           = useRef<GamePhase>('selecting');
@@ -102,77 +101,125 @@ export default function GameScreen() {
   const resultTimeoutRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ballFlightRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inningBreakRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const powerStartTimeRef    = useRef(0);
+  const accuracyStartTimeRef = useRef(0);
+  const powerIntervalRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const accuracyIntervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lockedPowerRef       = useRef(0);
+  const _startPowerRef       = useRef<() => void>(() => {});
+  const _stopPowerRef        = useRef<() => void>(() => {});
+
+  const pitchPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () =>
+        phaseRef.current === 'selecting' &&
+        !!selectedZoneRef.current &&
+        !!selectedPitchRef.current,
+      onPanResponderGrant: () => _startPowerRef.current(),
+      onPanResponderRelease: () => _stopPowerRef.current(),
+      onPanResponderTerminate: () => _stopPowerRef.current(),
+    }),
+  ).current;
 
   const canPitch = !!selectedZone && !!selectedPitch && phase === 'selecting';
   const { multiplier: seqMult, label: seqLabel } = calculateSequenceMultiplier(pitchHistory);
   const topOffset = (Platform.OS === 'web' ? 67 : insets.top) + 82;
   const bottomPad = Platform.OS === 'web' ? 34 : insets.bottom;
 
-  const isTotalControl = pitchingStyle === 'total_control';
+  const powerFillDuration    = 1500 + profile.stats.stamina * 200;
+  const accuracyCycleDuration = 600 + profile.stats.accuracy * 100;
 
   useEffect(() => () => {
     if (resultTimeoutRef.current)   clearTimeout(resultTimeoutRef.current);
     if (ballFlightRef.current)      clearTimeout(ballFlightRef.current);
     if (inningBreakRef.current)     clearTimeout(inningBreakRef.current);
+    if (powerIntervalRef.current)   clearInterval(powerIntervalRef.current);
+    if (accuracyIntervalRef.current) clearInterval(accuracyIntervalRef.current);
   }, []);
 
   // ─── Pitch flow ──────────────────────────────────────────────────────────
 
-  function startGesture() {
-    if (!selectedZoneRef.current || !selectedPitchRef.current) return;
-    phaseRef.current = 'gesture';
-    setPhase('gesture');
+  function startPower() {
+    if (
+      phaseRef.current !== 'selecting' ||
+      !selectedZoneRef.current ||
+      !selectedPitchRef.current
+    ) return;
+
+    phaseRef.current = 'power';
+    setPhase('power');
+    setPowerLevel(0);
+    powerStartTimeRef.current = Date.now();
+    const duration = powerFillDuration;
+
+    powerIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - powerStartTimeRef.current;
+      const p = Math.min(elapsed / duration, 1);
+      setPowerLevel(p);
+      if (p >= 1) {
+        if (powerIntervalRef.current) clearInterval(powerIntervalRef.current);
+        powerIntervalRef.current = null;
+        _stopPowerRef.current();
+      }
+    }, 16);
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }
 
-  // Classic mode: GestureCanvas calls back with (power, accuracy)
-  function handleCanvasComplete(power: number, accuracy: number) {
+  function stopPower() {
+    if (phaseRef.current !== 'power') return;
+    if (powerIntervalRef.current) {
+      clearInterval(powerIntervalRef.current);
+      powerIntervalRef.current = null;
+    }
+    const elapsed = Date.now() - powerStartTimeRef.current;
+    const power = Math.min(elapsed / powerFillDuration, 1);
+    lockedPowerRef.current = power;
+    setPowerLevel(power);
+    startAccuracy();
+  }
+
+  function startAccuracy() {
+    phaseRef.current = 'accuracy';
+    setPhase('accuracy');
+    accuracyStartTimeRef.current = Date.now();
+    const cycle = accuracyCycleDuration;
+
+    accuracyIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - accuracyStartTimeRef.current;
+      const t = (elapsed % cycle) / cycle;
+      setAccuracyPos((Math.sin(t * Math.PI * 2) + 1) / 2);
+    }, 16);
+  }
+
+  function lockAccuracy() {
+    if (phaseRef.current !== 'accuracy') return;
+    // Block re-entry immediately — taps during the ball-flight window must not
+    // queue additional resolvePitch calls.
+    phaseRef.current = 'result';
+    if (accuracyIntervalRef.current) {
+      clearInterval(accuracyIntervalRef.current);
+      accuracyIntervalRef.current = null;
+    }
+    const cycle = accuracyCycleDuration;
+    const elapsed = Date.now() - accuracyStartTimeRef.current;
+    const t = (elapsed % cycle) / cycle;
+    const pos = (Math.sin(t * Math.PI * 2) + 1) / 2;
+    const accuracyScore = 1 - Math.abs(pos - 0.5) * 2;
+    setAccuracyPos(pos);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    const power = lockedPowerRef.current;
     const zone = selectedZoneRef.current!;
     const target = getZoneCenter(zone);
     setBallTarget(target);
     setShowBallFlight(true);
+    if (ballFlightRef.current) clearTimeout(ballFlightRef.current);
     ballFlightRef.current = setTimeout(() => {
       setShowBallFlight(false);
-      resolvePitch(power, accuracy);
+      resolvePitch(power, accuracyScore);
     }, 420);
   }
-
-  // Total Control mode: GestureInputPanel calls back with gestureScore
-  const handleTCGestureComplete = useCallback(
-    ({ gestureScore }: { gestureScore: number; speedPxPerMs: number }) => {
-      if (phaseRef.current !== 'selecting') return;
-
-      phaseRef.current = 'gesture';
-      setPhase('gesture');
-
-      const label = gestureQualityLabel(gestureScore);
-      setGestureLabel(label);
-      setShowGestureLabel(true);
-
-      // Also trigger ball flight for visual continuity
-      const zone = selectedZoneRef.current!;
-      if (zone) {
-        const target = getZoneCenter(zone);
-        setBallTarget(target);
-        setShowBallFlight(true);
-      }
-
-      Haptics.impactAsync(
-        gestureScore >= 0.78
-          ? Haptics.ImpactFeedbackStyle.Heavy
-          : gestureScore >= 0.50
-          ? Haptics.ImpactFeedbackStyle.Medium
-          : Haptics.ImpactFeedbackStyle.Light,
-      );
-
-      setTimeout(() => {
-        setShowGestureLabel(false);
-        setShowBallFlight(false);
-        setTimeout(() => resolvePitch(gestureScore, gestureScore), 200);
-      }, 900);
-    },
-    [],
-  );
 
   function resolvePitch(powerScore: number, accuracyScore: number) {
     const zone      = selectedZoneRef.current!;
@@ -286,10 +333,11 @@ export default function GameScreen() {
     setBatterIndex(Math.floor(Math.random() * 3));
   }
 
-  // ─── Render ──────────────────────────────────────────────────────────────
+  // PanResponder with ref-forwarding to prevent stale closures
+  _startPowerRef.current = startPower;
+  _stopPowerRef.current  = stopPower;
 
-  const showClassicControls = !isTotalControl;
-  const showGestureControls = isTotalControl;
+  // ─── Render ──────────────────────────────────────────────────────────────
 
   return (
     <View style={styles.root}>
@@ -367,69 +415,46 @@ export default function GameScreen() {
         {/* Control area */}
         <View style={styles.controlArea}>
 
-          {/* ── CLASSIC MODE ── */}
-          {showClassicControls && phase === 'selecting' && canPitch && (
-            <TouchableOpacity
-              onPress={startGesture}
-              activeOpacity={0.82}
-            >
-              <LinearGradient
-                colors={['#FF6B6B', '#FF4757']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.pitchBtn}
-              >
-                <MaterialCommunityIcons name="gesture-swipe-down" size={24} color="#fff" />
-                <Text style={styles.pitchBtnText}>DRAW TO PITCH</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
-
-          {showClassicControls && phase === 'selecting' && !canPitch && (
-            <View style={styles.promptBox}>
-              <Text style={styles.promptText}>
-                {!selectedZone
-                  ? '☝️  Tap a zone in the field above'
-                  : '👇  Select your pitch type'}
-              </Text>
-            </View>
-          )}
-
-          {showClassicControls && phase === 'gesture' && selectedPitch && (
-            <GestureCanvas
-              pitchType={selectedPitch}
-              onComplete={handleCanvasComplete}
-            />
-          )}
-
-          {/* ── TOTAL CONTROL MODE ── */}
-          {showGestureControls && phase === 'selecting' && (
-            <>
-              {canPitch ? (
-                <GestureInputPanel
-                  pitchType={selectedPitch!}
-                  enabled={true}
-                  onGestureComplete={handleTCGestureComplete}
-                />
-              ) : (
+          {(phase === 'selecting' || phase === 'power') && (
+            <View {...pitchPanResponder.panHandlers} style={styles.pitchZone}>
+              {phase === 'selecting' && canPitch && (
+                <LinearGradient
+                  colors={['#FF6B6B', '#FF4757']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.pitchBtn}
+                >
+                  <MaterialCommunityIcons name="baseball" size={26} color="#fff" />
+                  <Text style={styles.pitchBtnText}>HOLD TO PITCH</Text>
+                </LinearGradient>
+              )}
+              {phase === 'selecting' && !canPitch && (
                 <View style={styles.promptBox}>
                   <Text style={styles.promptText}>
                     {!selectedZone
                       ? '☝️  Tap a zone in the field above'
-                      : '👇  Now choose your pitch type'}
+                      : '👇  Select your pitch type'}
                   </Text>
                 </View>
               )}
-            </>
-          )}
-
-          {showGestureControls && phase === 'gesture' && (
-            <View style={styles.resultWait}>
-              <Text style={styles.resultWaitText}>Delivering…</Text>
+              {phase === 'power' && (
+                <View style={styles.meterBox}>
+                  <PowerMeter level={powerLevel} />
+                </View>
+              )}
             </View>
           )}
 
-          {/* ── SHARED ── */}
+          {phase === 'accuracy' && (
+            <TouchableOpacity
+              style={styles.accuracyZone}
+              onPress={lockAccuracy}
+              activeOpacity={1}
+            >
+              <AccuracyMeter position={accuracyPos} />
+            </TouchableOpacity>
+          )}
+
           {phase === 'result' && (
             <View style={styles.resultWait}>
               <Text style={styles.resultWaitText}>Next batter up…</Text>
@@ -441,7 +466,6 @@ export default function GameScreen() {
       {/* ── OVERLAYS ─────────────────────────────────────── */}
       {lastResult && <PitchResultOverlay result={lastResult} visible={showResult} />}
 
-      <GestureQualityLabel label={gestureLabel} visible={showGestureLabel} />
 
       {showInningBreak && (
         <View style={styles.inningOverlay}>
@@ -487,6 +511,16 @@ const styles = StyleSheet.create({
   controlArea: {
     flex: 1,
     justifyContent: 'center',
+  },
+  pitchZone: { borderRadius: 20, overflow: 'hidden', minHeight: 80 },
+  meterBox: { backgroundColor: 'rgba(11,30,61,0.85)', borderRadius: 20, padding: 20 },
+  accuracyZone: {
+    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(11,30,61,0.85)',
+    borderRadius: 20,
+    padding: 20,
+    minHeight: 110,
   },
   pitchBtn: {
     flexDirection: 'row',

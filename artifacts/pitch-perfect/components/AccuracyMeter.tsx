@@ -16,7 +16,7 @@ export function AccuracyMeter({ position }: AccuracyMeterProps) {
   else if (score >= 0.55) { label = 'GOOD'; labelColor = '#FFCC00'; }
   else if (score >= 0.35) { label = 'OK'; labelColor = '#FF9800'; }
 
-  const needleLeft = `${Math.max(1, Math.min(97, position * 100))}%`;
+  const needleLeft = `${Math.max(1, Math.min(97, position * 100))}%` as `${number}%`;
 
   return (
     <View style={styles.wrapper}>
