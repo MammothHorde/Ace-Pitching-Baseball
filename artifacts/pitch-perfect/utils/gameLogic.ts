@@ -214,9 +214,16 @@ export function calculatePitchOutcome(
 
   if (didSwing) {
     let contactProb = 0.40;
-    // Power helps the pitcher induce whiffs across a wide band, not just at the
-    // exact sweet spot — so under/over-powering outside perfect is forgiven.
-    contactProb -= Math.max(0, (0.45 - Math.abs(powerScore - 0.60))) * 0.18;
+    // Nailing the power band (the green 0.60–0.88 the meter shows) is what
+    // actually generates swing-and-miss; under/over-powering leaves the pitch
+    // fat and hittable. The whiff reward is full inside the band and ramps down
+    // smoothly over a small margin so just-missing the edge isn't a hard cliff.
+    const BAND_LO = 0.60, BAND_HI = 0.88, BAND_MARGIN = 0.06;
+    let bandFactor: number;
+    if (powerScore >= BAND_LO && powerScore <= BAND_HI) bandFactor = 1;
+    else if (powerScore < BAND_LO) bandFactor = Math.max(0, 1 - (BAND_LO - powerScore) / BAND_MARGIN);
+    else bandFactor = Math.max(0, 1 - (powerScore - BAND_HI) / BAND_MARGIN);
+    contactProb -= 0.16 * bandFactor;
     contactProb -= acc * 0.14;
     if (pitchType === 'curveball' || pitchType === 'slider') contactProb -= 0.07 + stats.spin * 0.007;
     if (pitchType === 'splitter')  contactProb -= 0.10 + stats.spin * 0.008;
@@ -244,10 +251,13 @@ export function calculatePitchOutcome(
     }
     return 'strike_swinging';
   } else {
-    // Took the pitch: only the inner 3×3 can be a called strike; off the plate
-    // (or a missed spot) is a ball.
+    // Took the pitch: only the inner 3×3 can be a called strike. How reliably
+    // the umpire rings it up scales with how well the pitcher hit the spot —
+    // a pinpoint needle (raw accuracy) is a near-automatic strike, a sloppy one
+    // often misses the corner for a ball. Off the plate is always a ball.
     if (!STRIKE_ZONE.has(zone)) return 'ball';
-    return acc > 0.45 ? 'strike_called' : 'ball';
+    const spotProb = Math.min(0.97, Math.max(0.12, 0.25 + accuracyScore * 0.72));
+    return Math.random() < spotProb ? 'strike_called' : 'ball';
   }
 }
 
