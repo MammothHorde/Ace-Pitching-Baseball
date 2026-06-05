@@ -514,7 +514,7 @@ export default function GameScreen() {
         <View style={styles.controlArea}>
 
           {/* Batter hot/cold zones — intel during zone selection */}
-          {phase === 'selecting' && <HotColdZones />}
+          {phase === 'selecting' && <HotColdZones batterIndex={batterIndex} />}
 
           {(phase === 'power' || phase === 'accuracy') && (
             <View>
