@@ -32,7 +32,7 @@ import {
 import { usePitcher } from '@/context/PitcherContext';
 import { useAudio } from '@/context/AudioContext';
 import { StadiumBackground } from '@/components/StadiumBackground';
-import { FieldScene, type FieldSceneHandle } from '@/components/FieldScene';
+import { BatterScene } from '@/components/BatterScene';
 import { BallFlight } from '@/components/BallFlight';
 import { StrikeZone } from '@/components/StrikeZone';
 import { PowerMeter } from '@/components/PowerMeter';
@@ -121,7 +121,6 @@ export default function GameScreen() {
   const lockedPowerRef       = useRef(0);
   const _lockPowerRef        = useRef<() => void>(() => {});
   const _lockAccuracyRef     = useRef<() => void>(() => {});
-  const sceneRef             = useRef<FieldSceneHandle>(null);
 
   // Single screen-level touch handler. Children (zone grid, pitch selector,
   // HUD buttons) claim the responder first via bubbling, so selection taps
@@ -261,35 +260,27 @@ export default function GameScreen() {
     const power = lockedPowerRef.current;
     const zone = selectedZoneRef.current!;
     const target = getZoneCenter(zone);
-
-    // Resolve the outcome up front (deterministic given the locked inputs) so the
-    // scene can react in sync with the ball: the batter swings during the flight,
-    // the catcher receives it on arrival, the umpire calls a beat later.
-    const outcome = calculatePitchOutcome(
-      selectedPitchRef.current!, zone, power, accuracyScore,
-      profile.stats, strikesRef.current, ballsRef.current, pitchHistoryRef.current,
-    );
-    const swung = outcome === 'hit' || outcome === 'foul' || outcome === 'strike_swinging';
-    if (swung) sceneRef.current?.swing();
-
     setBallTarget(target);
     setShowBallFlight(true);
     playSfx('throw');
     if (ballFlightRef.current) clearTimeout(ballFlightRef.current);
     ballFlightRef.current = setTimeout(() => {
       setShowBallFlight(false);
-      // Caught cleanly when the bat misses or the pitch is taken.
-      if (outcome !== 'hit' && outcome !== 'foul') sceneRef.current?.catchBall();
-      resolvePitch(power, accuracyScore, outcome);
+      resolvePitch(power, accuracyScore);
     }, 420);
   }
 
-  function resolvePitch(powerScore: number, accuracyScore: number, outcome: PitchOutcome) {
-    const curStr    = strikesRef.current;
-    const curBalls  = ballsRef.current;
-    const history   = pitchHistoryRef.current;
+  function resolvePitch(powerScore: number, accuracyScore: number) {
     const zone      = selectedZoneRef.current!;
     const pitchType = selectedPitchRef.current!;
+    const curStr    = strikesRef.current;
+    const curBalls  = ballsRef.current;
+
+    const history = pitchHistoryRef.current;
+    const outcome = calculatePitchOutcome(
+      pitchType, zone, powerScore, accuracyScore,
+      profile.stats, curStr, curBalls, history,
+    );
 
     let newStrikes = curStr;
     let newBalls   = curBalls;
@@ -309,13 +300,6 @@ export default function GameScreen() {
     else if (outcome === 'hit' || outcome === 'foul') playSfx('hit');
 
     const UMP = 280; // ms after the catch, so the call lands cleanly
-    // Umpire gestures in sync with the spoken call (skip on balls in play).
-    if (outcome === 'hit' || outcome === 'foul') {
-      // no call — ball is in play
-    } else {
-      const call: 'strike' | 'ball' | 'out' = isKO ? 'out' : isStrike ? 'strike' : 'ball';
-      setTimeout(() => sceneRef.current?.umpireCall(call), UMP);
-    }
     if (isKO) {
       playSfxIn('umpStrikeout', UMP);
       playSfxIn('cheer', UMP + 420);          // home crowd roars for the K
@@ -438,7 +422,7 @@ export default function GameScreen() {
 
       {/* ── SCENE (upper portion) ─────────────────────────── */}
       <View style={[styles.sceneArea, { height: SCENE_H }]}>
-        <FieldScene ref={sceneRef} batterIndex={batterIndex} />
+        <BatterScene batterIndex={batterIndex} visibleTop={topOffset} />
 
         {/* Sequence combo badge */}
         <View style={[styles.seqWrap, { top: topOffset + 4 }]}>
