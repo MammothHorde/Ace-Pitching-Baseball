@@ -43,7 +43,7 @@ export function GameHUD({ score, inning, outs, strikes, balls, sequenceMultiplie
         </View>
 
         <View style={styles.centerBlock}>
-          <Text style={styles.inningText}>INN {inning}/3</Text>
+          <Text style={styles.inningText}>INN {inning}/1</Text>
           <View style={styles.dotsRow}>
             <SmallDot filled={outs >= 1} color="#FFCC00" />
             <SmallDot filled={outs >= 2} color="#FFCC00" />

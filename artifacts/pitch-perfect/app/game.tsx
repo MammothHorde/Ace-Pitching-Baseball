@@ -377,7 +377,7 @@ export default function GameScreen() {
       if (isOut) { outsRef.current = currentOuts; setOuts(currentOuts); }
 
       if (currentOuts >= 3 && isOut) {
-        if (inningRef.current >= 3) {
+        if (inningRef.current >= 1) {
           recordGameResult(finalScore);
           router.replace({ pathname: '/results', params: { score: String(finalScore) } });
           return;
