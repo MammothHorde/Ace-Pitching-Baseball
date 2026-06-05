@@ -30,6 +30,42 @@ uri = "file://artifacts/pitch-perfect/assets/images/batter_3.png"
 type = "image"
 title = "batter-black-swing-load"
 
+[[generated]]
+id = "ckYcqM2Oe5gr12pPyIwvr"
+uri = "file://attached_assets/generated_images/pp_icon_a.png"
+type = "image"
+title = "pitch perfect icon a"
+
+[[generated]]
+id = "Oia2te21gWhyvT9v6P7Va"
+uri = "file://attached_assets/generated_images/pp_icon_b.png"
+type = "image"
+title = "pitch perfect icon b"
+
+[[generated]]
+id = "avweud4mZmOv8ChCSpeIL"
+uri = "file://attached_assets/generated_images/pp_icon_c.png"
+type = "image"
+title = "pitch perfect icon c"
+
+[[generated]]
+id = "myms9mDU5Zu-gMSj4Quvp"
+uri = "file://attached_assets/generated_images/pp_icon_mir_a.png"
+type = "image"
+title = "pp icon mirrored a"
+
+[[generated]]
+id = "XlRA_bIlN1ahpcU6mEzV6"
+uri = "file://attached_assets/generated_images/pp_icon_mir_b.png"
+type = "image"
+title = "pp icon mirrored b"
+
+[[generated]]
+id = "nwryWZmGhNhIBKYQ_zBh9"
+uri = "file://attached_assets/generated_images/pp_icon_mir_c.png"
+type = "image"
+title = "pp icon mirrored c"
+
 [[outputs]]
 id = "x07VhkfH3oS9cBXWD0mp1"
 uri = "file://attached_assets/generated_audio/sound_effect_pp_throw.mp3"
