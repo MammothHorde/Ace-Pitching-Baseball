@@ -33,6 +33,18 @@ function zoneType(z: ZoneId): 'corner' | 'edge' | 'center' | 'ball' {
   return 'edge';                                  // strike-zone edges
 }
 
+// Semi-transparent heat backgrounds and borders derived from a solid hex color.
+function heatBg(hex: string): string {
+  if (hex === '#D63031') return 'rgba(214,48,49,0.52)';
+  if (hex === '#0984E3') return 'rgba(9,132,227,0.48)';
+  return 'rgba(99,110,114,0.40)';
+}
+function heatBorder(hex: string): string {
+  if (hex === '#D63031') return 'rgba(214,48,49,0.85)';
+  if (hex === '#0984E3') return 'rgba(9,132,227,0.85)';
+  return 'rgba(99,110,114,0.65)';
+}
+
 interface StrikeZoneProps {
   selectedZone: ZoneId | null;
   onSelectZone: (zone: ZoneId) => void;
@@ -42,6 +54,11 @@ interface StrikeZoneProps {
   cellWidth?: number;
   /** Override cell height — keep in sync with game.tsx ball targeting. */
   cellHeight?: number;
+  /**
+   * Optional heat map: { [ZoneId]: '#D63031' | '#0984E3' | '#636E72' }
+   * When provided, strike-zone cells are tinted with the matching heat color.
+   */
+  heatMap?: Partial<Record<number, string>>;
 }
 
 export function StrikeZone({
@@ -51,6 +68,7 @@ export function StrikeZone({
   compact,
   cellWidth,
   cellHeight,
+  heatMap,
 }: StrikeZoneProps) {
   const zones = Array.from({ length: GRID * GRID }, (_, i) => (i + 1) as ZoneId);
   const cellW = cellWidth ?? (compact ? 34 : 48);
@@ -65,6 +83,7 @@ export function StrikeZone({
           const isSelected = selectedZone === zone;
           const type = zoneType(zone);
           // Out-of-zone (ball) cells read dim; strike-zone cells read brighter.
+          const heatColor = (!isSelected && heatMap) ? heatMap[zone] : undefined;
           let bg = type === 'ball'
             ? (compact ? 'rgba(11,30,61,0.32)' : 'rgba(22,40,71,0.40)')
             : (compact ? 'rgba(46,213,115,0.12)' : 'rgba(46,213,115,0.14)');
@@ -73,6 +92,8 @@ export function StrikeZone({
             : (compact ? 'rgba(46,213,115,0.30)' : 'rgba(46,213,115,0.30)');
           if (type === 'corner') bg = compact ? 'rgba(255,204,0,0.16)' : 'rgba(255,204,0,0.18)';
           if (type === 'center') bg = compact ? 'rgba(255,71,87,0.18)' : 'rgba(255,71,87,0.20)';
+          // Heat map overrides zone-type colors for strike zone cells (not ball cells, not selected).
+          if (heatColor) { bg = heatBg(heatColor); borderColor = heatBorder(heatColor); }
           if (isSelected) { bg = '#FFCC00'; borderColor = '#FFCC00'; }
 
           return (

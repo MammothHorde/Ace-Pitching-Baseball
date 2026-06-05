@@ -42,7 +42,7 @@ import { GameHUD } from '@/components/GameHUD';
 import { PitchResultOverlay } from '@/components/PitchResultOverlay';
 import { SequenceBonus } from '@/components/SequenceBonus';
 import { CountBanner } from '@/components/CountBanner';
-import { HotColdZones } from '@/components/HotColdZones';
+import { HotColdZones, getHeatMap } from '@/components/HotColdZones';
 
 // ─── Layout constants ────────────────────────────────────────────────────────
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -454,6 +454,7 @@ export default function GameScreen() {
               Haptics.selectionAsync();
             }}
             disabled={phase !== 'selecting'}
+            heatMap={getHeatMap(batterIndex)}
           />
         </View>
 
@@ -515,8 +516,10 @@ export default function GameScreen() {
         {/* Control area */}
         <View style={styles.controlArea}>
 
-          {/* Batter hot/cold zones — intel during zone selection */}
-          {phase === 'selecting' && <HotColdZones batterIndex={batterIndex} />}
+          {/* Batter hot/cold zones — compact strip; tooltip driven by selected zone */}
+          {phase === 'selecting' && (
+            <HotColdZones batterIndex={batterIndex} selectedZoneId={selectedZone} />
+          )}
 
           {(phase === 'power' || phase === 'accuracy') && (
             <View>
