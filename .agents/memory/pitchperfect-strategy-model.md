@@ -57,27 +57,10 @@ sync rule). If you ease it, the displayed perfect zone no longer matches where t
 +75 perfect bonus fires.
 
 Forgiveness for off-center needles lives **only inside `calculatePitchOutcome`**:
-it eases its own copy `acc = accuracyScore^0.6` and uses `acc` for the *forgiving*
-paths (auto-ball floor `acc<0.20`, swing/contact biases). **How to apply:** to make
-the game more/less forgiving outside perfect, tune the exponent + the `acc`
-thresholds there; do NOT touch `accuracyScore` in game.tsx or the `isPerfect*`
-thresholds, or you'll desync the meter UI from the reward.
-
-## Meters MUST be graded, not flat (the "pitching feels off" fix)
-
-**Why:** the called-strike-on-take used a flat `acc > 0.45 ? strike : ball` and the
-power reward was a tiny triangle — so a *perfectly* timed accuracy/power tap gave
-almost the same outcome as a sloppy one (sim: acc 1.0→83% vs acc 0.4→82% strikes;
-power 0.10 vs 0.74 ≈ identical). The skill mini-games were cosmetic. Players notice.
-**How to apply / invariants now in place:**
-- Called-strike-on-take is **probabilistic on the RAW `accuracyScore`** (the one
-  intentional outcome use of the raw score, so the displayed PERFECT needle is
-  actually rewarded): `spotProb = clamp(0.25 + accuracyScore*0.72, 0.12, 0.97)`.
-  Gives a real gradient (acc 1.0→~87%, 0.6→~72%, 0.4→~63%, 0.2→~51% strikes).
-- Power whiff reward keys off the **same green band the PowerMeter draws (0.60–0.88)**
-  via a `bandFactor` that is 1 in-band and **ramps over a 0.06 margin** — never a hard
-  step (a 1% edge miss must not cliff). In-band ≈ -0.16 contact (more whiffs/fewer hits).
-- **Balance check:** worst in-zone command still ≈25% called strikes (family-friendly,
-  not brutal); a clear miss should mostly fail; extreme low accuracy/power still auto-ball/auto-hit.
-- Validate any retune with the Monte-Carlo trick: `sed '1s/^import {/import type {/'`
-  the file (its imports are types-only) and run with `node --experimental-strip-types`.
+it eases its own copy `acc = accuracyScore^0.6` and uses `acc` (never the raw score)
+for every outcome decision (auto-ball floor, swing/contact prob, called-strike-on-take).
+**How to apply:** to make the game more/less forgiving outside perfect, tune the
+exponent + the `acc` thresholds there; do NOT touch `accuracyScore` in game.tsx or the
+`isPerfect*` thresholds, or you'll desync the meter UI from the reward.
+**Balance check:** a clear miss (needle dev > ~0.35, linear score < 0.30 = meter "MISS")
+must still fail (taken in-zone → ball); only the extreme edge auto-balls.

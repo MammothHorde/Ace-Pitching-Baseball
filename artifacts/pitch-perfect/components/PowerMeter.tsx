@@ -1,19 +1,15 @@
 import React from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface PowerMeterProps {
-  /** 0…1 power level — used for label text only (low-freq update). */
+  /** 0…1 power level (oscillates up/down the y-axis while active). */
   level: number;
   /** When false the meter is shown but idle/locked (no live animation). */
   active?: boolean;
-  /** Animated.Value (0…1) driving the smooth bar visual each frame. */
-  animValue: Animated.Value;
 }
 
-const TRACK_H = 152;
-
-export function PowerMeter({ level, active = true, animValue }: PowerMeterProps) {
+export function PowerMeter({ level, active = true }: PowerMeterProps) {
   const isPerfect = level >= 0.60 && level <= 0.88;
   const isWeak = level < 0.30;
   const isMax = level > 0.92;
@@ -21,40 +17,35 @@ export function PowerMeter({ level, active = true, animValue }: PowerMeterProps)
 
   let barColors: [string, string] = ['#FFCC00', '#F39C12'];
   let valueColor = '#FFCC00';
-  if (isWeak)    { barColors = ['#FF6B6B', '#FF4757']; valueColor = '#FF6B6B'; }
+  if (isWeak) { barColors = ['#FF6B6B', '#FF4757']; valueColor = '#FF6B6B'; }
   else if (isPerfect) { barColors = ['#2ED573', '#00B894']; valueColor = '#2ED573'; }
   else if (isMax) { barColors = ['#FF4757', '#C0392B']; valueColor = '#FF4757'; }
-
-  // Pin the fill bar to the track's bottom using transform-only animation so
-  // no layout pass is needed per frame (compatible with useNativeDriver: true
-  // if ever switched). translateY shifts the center of the full-height bar
-  // downward so its bottom edge always sits at TRACK_H regardless of scale.
-  const translateY = animValue.interpolate({ inputRange: [0, 1], outputRange: [TRACK_H / 2, 0] });
 
   return (
     <View style={styles.wrapper}>
       <Text style={styles.title}>POWER</Text>
 
       <View style={styles.track}>
-        {/* Perfect band overlay: 60 %–88 % from the bottom. */}
+        {/* Perfect band: 60%–88% measured from the bottom. */}
         <View style={styles.perfectZone} />
-
-        {/* Full-height fill scaled + translated by Animated — zero React re-renders. */}
-        <Animated.View style={[styles.fillWrap, { transform: [{ translateY }, { scaleY: animValue }] }]}>
+        {/* Fill rises from the bottom; its height tracks the live level. */}
+        <View style={[styles.fillWrap, { height: `${pct}%` }]}>
           <LinearGradient
             colors={barColors}
             start={{ x: 0, y: 1 }}
             end={{ x: 0, y: 0 }}
             style={StyleSheet.absoluteFill}
           />
-          <View style={[styles.cap, { opacity: active ? 1 : 0.5 }]} />
-        </Animated.View>
+          <View style={[styles.cap, { backgroundColor: '#FFFFFF', opacity: active ? 1 : 0.5 }]} />
+        </View>
       </View>
 
       <Text style={[styles.pct, { color: valueColor }]}>{pct}%</Text>
     </View>
   );
 }
+
+const TRACK_H = 152;
 
 const styles = StyleSheet.create({
   wrapper: { alignItems: 'center', width: 58 },
@@ -88,8 +79,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    top: 0,
-    height: TRACK_H,
+    bottom: 0,
+    borderRadius: 17,
     overflow: 'hidden',
   },
   cap: {
@@ -99,7 +90,6 @@ const styles = StyleSheet.create({
     right: 0,
     height: 3,
     borderRadius: 2,
-    backgroundColor: '#FFFFFF',
   },
   pct: {
     fontSize: 13,

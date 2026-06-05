@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Animated,
   Dimensions,
-  Easing,
   PanResponder,
   Platform,
   StyleSheet,
@@ -118,16 +116,8 @@ export default function GameScreen() {
   const inningBreakRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const powerStartTimeRef    = useRef(0);
   const accuracyStartTimeRef = useRef(0);
-  // Animated values drive the meter visuals without React re-renders per frame.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const powerAnim            = useRef(new Animated.Value(0)).current;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const accuracyAnim         = useRef(new Animated.Value(0.5)).current;
-  const powerAnimLoop        = useRef<Animated.CompositeAnimation | null>(null);
-  const accuracyAnimLoop     = useRef<Animated.CompositeAnimation | null>(null);
-  // Low-frequency intervals update label text only (no per-frame re-render).
-  const powerLabelInterval   = useRef<ReturnType<typeof setInterval> | null>(null);
-  const accuracyLabelInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const powerIntervalRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const accuracyIntervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const lockedPowerRef       = useRef(0);
   const _lockPowerRef        = useRef<() => void>(() => {});
   const _lockAccuracyRef     = useRef<() => void>(() => {});
@@ -175,10 +165,8 @@ export default function GameScreen() {
     if (resultTimeoutRef.current)   clearTimeout(resultTimeoutRef.current);
     if (ballFlightRef.current)      clearTimeout(ballFlightRef.current);
     if (inningBreakRef.current)     clearTimeout(inningBreakRef.current);
-    powerAnimLoop.current?.stop();
-    accuracyAnimLoop.current?.stop();
-    if (powerLabelInterval.current)    clearInterval(powerLabelInterval.current);
-    if (accuracyLabelInterval.current) clearInterval(accuracyLabelInterval.current);
+    if (powerIntervalRef.current)   clearInterval(powerIntervalRef.current);
+    if (accuracyIntervalRef.current) clearInterval(accuracyIntervalRef.current);
   }, []);
 
   // Once both a zone and a pitch type are chosen, kick off the power meter
@@ -213,34 +201,22 @@ export default function GameScreen() {
     setPowerLevel(0);
     powerStartTimeRef.current = Date.now();
 
-    // Smooth bar via Animated.loop — no React re-render per frame.
-    // Two half-cycles with easeInOutSin exactly replicates the powerAt() sin wave.
-    powerAnim.setValue(0);
-    powerAnimLoop.current?.stop();
-    const half = powerCycleDuration / 2;
-    powerAnimLoop.current = Animated.loop(
-      Animated.sequence([
-        Animated.timing(powerAnim, { toValue: 1, duration: half, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-        Animated.timing(powerAnim, { toValue: 0, duration: half, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-      ]),
-    );
-    powerAnimLoop.current.start();
-    // Low-freq label update (50 ms) — text only, no per-frame re-render.
-    if (powerLabelInterval.current) clearInterval(powerLabelInterval.current);
-    powerLabelInterval.current = setInterval(() => {
-      setPowerLevel(powerAt(Date.now() - powerStartTimeRef.current));
-    }, 50);
+    if (powerIntervalRef.current) clearInterval(powerIntervalRef.current);
+    powerIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - powerStartTimeRef.current;
+      setPowerLevel(powerAt(elapsed));
+    }, 16);
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }
 
   function lockPower() {
     if (phaseRef.current !== 'power') return;
-    powerAnimLoop.current?.stop();
-    powerAnimLoop.current = null;
-    if (powerLabelInterval.current) { clearInterval(powerLabelInterval.current); powerLabelInterval.current = null; }
+    if (powerIntervalRef.current) {
+      clearInterval(powerIntervalRef.current);
+      powerIntervalRef.current = null;
+    }
     const power = powerAt(Date.now() - powerStartTimeRef.current);
-    powerAnim.setValue(power);   // freeze visual bar at the locked level
     lockedPowerRef.current = power;
     setPowerLevel(power);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -253,25 +229,12 @@ export default function GameScreen() {
     accuracyStartTimeRef.current = Date.now();
     const cycle = accuracyCycleDuration;
 
-    // Smooth needle via Animated.loop — 0.5→1 (right) → 0 (left) → 0.5 (center).
-    // The 3-step sequence closely approximates (sin(t·2π)+1)/2 with no re-renders.
-    accuracyAnim.setValue(0.5);
-    accuracyAnimLoop.current?.stop();
-    accuracyAnimLoop.current = Animated.loop(
-      Animated.sequence([
-        Animated.timing(accuracyAnim, { toValue: 1,   duration: cycle / 4, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-        Animated.timing(accuracyAnim, { toValue: 0,   duration: cycle / 2, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-        Animated.timing(accuracyAnim, { toValue: 0.5, duration: cycle / 4, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-      ]),
-    );
-    accuracyAnimLoop.current.start();
-    // Low-freq label update (50 ms) — text only.
-    if (accuracyLabelInterval.current) clearInterval(accuracyLabelInterval.current);
-    accuracyLabelInterval.current = setInterval(() => {
+    if (accuracyIntervalRef.current) clearInterval(accuracyIntervalRef.current);
+    accuracyIntervalRef.current = setInterval(() => {
       const elapsed = Date.now() - accuracyStartTimeRef.current;
       const t = (elapsed % cycle) / cycle;
       setAccuracyPos((Math.sin(t * Math.PI * 2) + 1) / 2);
-    }, 50);
+    }, 16);
   }
 
   function lockAccuracy() {
@@ -279,9 +242,10 @@ export default function GameScreen() {
     // Block re-entry immediately — taps during the ball-flight window must not
     // queue additional resolvePitch calls.
     phaseRef.current = 'result';
-    accuracyAnimLoop.current?.stop();
-    accuracyAnimLoop.current = null;
-    if (accuracyLabelInterval.current) { clearInterval(accuracyLabelInterval.current); accuracyLabelInterval.current = null; }
+    if (accuracyIntervalRef.current) {
+      clearInterval(accuracyIntervalRef.current);
+      accuracyIntervalRef.current = null;
+    }
     const cycle = accuracyCycleDuration;
     const elapsed = Date.now() - accuracyStartTimeRef.current;
     const t = (elapsed % cycle) / cycle;
@@ -290,7 +254,6 @@ export default function GameScreen() {
     // so the displayed perfect zone always matches the reward. Forgiveness for
     // off-center needles is applied separately inside calculatePitchOutcome.
     const accuracyScore = 1 - Math.abs(pos - 0.5) * 2;
-    accuracyAnim.setValue(pos);  // freeze visual needle at the locked position
     setAccuracyPos(pos);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
@@ -553,10 +516,10 @@ export default function GameScreen() {
             <View>
               <View style={styles.metersRow}>
                 <View style={phase === 'power' ? undefined : styles.meterIdle}>
-                  <PowerMeter level={powerLevel} active={phase === 'power'} animValue={powerAnim} />
+                  <PowerMeter level={powerLevel} active={phase === 'power'} />
                 </View>
                 <View style={[styles.accuracyCol, phase === 'accuracy' ? undefined : styles.meterIdle]}>
-                  <AccuracyMeter position={accuracyPos} active={phase === 'accuracy'} animValue={accuracyAnim} />
+                  <AccuracyMeter position={accuracyPos} active={phase === 'accuracy'} />
                 </View>
               </View>
               <Text style={styles.phaseHint}>
