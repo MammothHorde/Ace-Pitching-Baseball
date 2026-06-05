@@ -46,18 +46,18 @@ import { CountBanner } from '@/components/CountBanner';
 // ─── Layout constants ────────────────────────────────────────────────────────
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const SCENE_H = Math.min(SCREEN_H * 0.52, 440);
-const ZONE_GRID = 5;
-const BASE_CELL_W = 34;
-const BASE_CELL_H = 30;
+const ZONE_GRID = 9;
+const BASE_CELL_W = 24;
+const BASE_CELL_H = 21;
 // HUD card ends at ~149px (web) / ~120px (native) — push zone into visible area
 const HUD_APPROX = Platform.OS === 'web' ? 149 : 120;
 const VISIBLE_H = SCENE_H - HUD_APPROX;
 const BALL_FROM_X = SCREEN_W / 2;
 const BALL_FROM_Y = SCENE_H * 0.96;
 
-// 5-wide × 5-tall grid, numbered row-major 1…25.
-const zoneCol = (zone: ZoneId) => (zone - 1) % ZONE_GRID;        // 0 … 4
-const zoneRow = (zone: ZoneId) => Math.floor((zone - 1) / ZONE_GRID); // 0 … 4
+// 9-wide × 9-tall grid, numbered row-major 1…81.
+const zoneCol = (zone: ZoneId) => (zone - 1) % ZONE_GRID;        // 0 … 8
+const zoneRow = (zone: ZoneId) => Math.floor((zone - 1) / ZONE_GRID); // 0 … 8
 
 // Difficulty 0…1 → grid geometry. Easier = bigger zone, harder = smaller zone.
 // The cell size MUST match what StrikeZone renders (passed as props) so the

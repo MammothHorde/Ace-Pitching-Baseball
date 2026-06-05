@@ -41,36 +41,33 @@ export function getAvailablePoints(profile: { lifetimePoints: number; spentPoint
 //   • Sequence — never be predictable; tunnel pitches off the same look;
 //     the count dictates the plan, peaking at the 3-2 "payoff pitch".
 
-// 5-wide × 5-tall pitch grid (25 cells, numbered row-major top→bottom). The
-// inner 3×3 (cells 7-9, 12-14, 17-19) is the actual STRIKE ZONE; the outer ring
-// is out of the zone — a taken pitch there is a ball.
-//    1  2  3  4  5   (top — out of zone)
-//    6 [7  8  9]10
-//   11[12 13 14]15   (middle — 13 is dead center)
-//   16[17 18 19]20
-//   21 22 23 24 25   (bottom — out of zone)
-const ZONE_GRID = 5;
-const zCol = (z: ZoneId) => (z - 1) % ZONE_GRID;        // 0 (inside) … 4 (outside)
-const zRow = (z: ZoneId) => Math.floor((z - 1) / ZONE_GRID); // 0 (top) … 4 (bottom)
+// 9-wide × 9-tall pitch grid (81 cells, numbered row-major top→bottom). The
+// center 3×3 (columns 3-5, rows 3-5 — cells 31-33, 40-42, 49-51) is the actual
+// STRIKE ZONE; everything outside that center block is out of the zone — a taken
+// pitch there is a ball. The strike zone sits dead-center inside a 3-cell-thick
+// "ball" ring on every side. Cell 41 is dead center.
+const ZONE_GRID = 9;
+const zCol = (z: ZoneId) => (z - 1) % ZONE_GRID;        // 0 (inside edge) … 8 (outside edge)
+const zRow = (z: ZoneId) => Math.floor((z - 1) / ZONE_GRID); // 0 (top) … 8 (bottom)
 const ALL_ZONES = Array.from({ length: ZONE_GRID * ZONE_GRID }, (_, i) => (i + 1) as ZoneId);
 
-// Inner 3×3 = the strike zone (columns 1-3, rows 1-3).
+// Center 3×3 = the strike zone (columns 3-5, rows 3-5).
 const inStrikeZone = (z: ZoneId) =>
-  zCol(z) >= 1 && zCol(z) <= 3 && zRow(z) >= 1 && zRow(z) <= 3;
+  zCol(z) >= 3 && zCol(z) <= 5 && zRow(z) >= 3 && zRow(z) <= 5;
 // Corner of the strike zone — the "painted" edge, the nastiest strike to hit.
 const isZoneCorner = (z: ZoneId) =>
-  inStrikeZone(z) && (zCol(z) === 1 || zCol(z) === 3) && (zRow(z) === 1 || zRow(z) === 3);
+  inStrikeZone(z) && (zCol(z) === 3 || zCol(z) === 5) && (zRow(z) === 3 || zRow(z) === 5);
 
-export const STRIKE_ZONE  = new Set<ZoneId>(ALL_ZONES.filter(inStrikeZone)); // 7-9,12-14,17-19
-export const CORNER_ZONES = new Set<ZoneId>(ALL_ZONES.filter(isZoneCorner)); // 7, 9, 17, 19
-export const HEART_ZONE: ZoneId = 13; // dead center — most hittable
+export const STRIKE_ZONE  = new Set<ZoneId>(ALL_ZONES.filter(inStrikeZone)); // 31-33,40-42,49-51
+export const CORNER_ZONES = new Set<ZoneId>(ALL_ZONES.filter(isZoneCorner)); // 31, 33, 49, 51
+export const HEART_ZONE: ZoneId = 41; // dead center — most hittable
 // Non-corner edges of the strike zone (still strikes, a touch tougher to barrel).
 export const EDGE_ZONES   = new Set<ZoneId>(
-  ALL_ZONES.filter(z => inStrikeZone(z) && !isZoneCorner(z) && z !== HEART_ZONE), // 8, 12, 14, 18
+  ALL_ZONES.filter(z => inStrikeZone(z) && !isZoneCorner(z) && z !== HEART_ZONE), // 32, 40, 42, 50
 );
-export const HIGH_ZONES  = new Set<ZoneId>(ALL_ZONES.filter(z => zRow(z) <= 1)); // top two tiers
-export const LOW_ZONES   = new Set<ZoneId>(ALL_ZONES.filter(z => zRow(z) >= 3)); // bottom two tiers
-const DOWN_AND_AWAY: ZoneId = 19; // low-outside corner of the strike zone — premium spot
+export const HIGH_ZONES  = new Set<ZoneId>(ALL_ZONES.filter(z => zRow(z) <= 2)); // above the zone
+export const LOW_ZONES   = new Set<ZoneId>(ALL_ZONES.filter(z => zRow(z) >= 6)); // below the zone
+const DOWN_AND_AWAY: ZoneId = 51; // low-outside corner of the strike zone — premium spot
 
 export function isInStrikeZone(zone: ZoneId): boolean {
   return STRIKE_ZONE.has(zone);
@@ -286,11 +283,11 @@ export function calculateSequenceMultiplier(history: PitchRecord[]): { multiplie
   const recent = history.slice(-5);
   const types = new Set(recent.map(p => p.type));
   const getQuadrant = (z: ZoneId): string => {
-    const col = zCol(z); // 0 (inside) … 4 (outside)
-    const row = zRow(z); // 0 (top) … 4 (bottom)
-    if (col <= 1) return 'inside';
-    if (col >= 3) return 'outside';
-    return row <= 1 ? 'high' : 'low';
+    const col = zCol(z); // 0 (inside) … 8 (outside)
+    const row = zRow(z); // 0 (top) … 8 (bottom)
+    if (col <= 3) return 'inside';
+    if (col >= 5) return 'outside';
+    return row <= 3 ? 'high' : 'low';
   };
   const locations = new Set(recent.map(p => getQuadrant(p.zone)));
 

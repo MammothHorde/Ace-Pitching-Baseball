@@ -2,34 +2,34 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ZoneId } from '@/constants/GameTypes';
 
-// 5-wide × 5-tall grid, numbered row-major 1…25.
-const GRID = 5;
-const COL_LABEL = ['IN', 'in', 'MID', 'out', 'OUT'];
-const ROW_LABEL = ['HI', 'UP', 'MID', 'LO', 'DN'];
+// 9-wide × 9-tall grid, numbered row-major 1…81.
+const GRID = 9;
+const COL_LABEL = ['', '', '', 'IN', 'MID', 'OUT', '', '', ''];
+const ROW_LABEL = ['', '', '', 'HI', 'MID', 'LO', '', '', ''];
 
-const zoneCol = (z: ZoneId) => (z - 1) % GRID;        // 0 (inside) … 4 (outside)
-const zoneRow = (z: ZoneId) => Math.floor((z - 1) / GRID); // 0 (top) … 4 (bottom)
+const zoneCol = (z: ZoneId) => (z - 1) % GRID;        // 0 (inside) … 8 (outside)
+const zoneRow = (z: ZoneId) => Math.floor((z - 1) / GRID); // 0 (top) … 8 (bottom)
 
-// Inner 3×3 (cols 1-3, rows 1-3) is the actual strike zone; the outer ring is
-// out of the zone (ball territory).
+// Center 3×3 (cols 3-5, rows 3-5) is the actual strike zone; everything outside
+// that center block is out of the zone (ball territory).
 const inStrikeZone = (z: ZoneId) =>
-  zoneCol(z) >= 1 && zoneCol(z) <= 3 && zoneRow(z) >= 1 && zoneRow(z) <= 3;
+  zoneCol(z) >= 3 && zoneCol(z) <= 5 && zoneRow(z) >= 3 && zoneRow(z) <= 5;
 
 function zoneLabel(z: ZoneId): string {
   const col = zoneCol(z);
   const row = zoneRow(z);
-  if (col === 2 && row === 2) return '•'; // dead center
+  if (col === 4 && row === 4) return '•'; // dead center
   return `${ROW_LABEL[row]}\n${COL_LABEL[col]}`;
 }
 
 function zoneType(z: ZoneId): 'corner' | 'edge' | 'center' | 'ball' {
-  if (!inStrikeZone(z)) return 'ball';            // outer ring — off the plate
+  if (!inStrikeZone(z)) return 'ball';            // outside the center — off the plate
   const col = zoneCol(z);
   const row = zoneRow(z);
-  const colEdge = col === 1 || col === 3;
-  const rowEdge = row === 1 || row === 3;
+  const colEdge = col === 3 || col === 5;
+  const rowEdge = row === 3 || row === 5;
   if (colEdge && rowEdge) return 'corner';        // strike-zone corners (paint)
-  if (col === 2 && row === 2) return 'center';     // dead center — heart
+  if (col === 4 && row === 4) return 'center';     // dead center — heart
   return 'edge';                                  // strike-zone edges
 }
 
@@ -100,14 +100,14 @@ export function StrikeZone({
             </TouchableOpacity>
           );
         })}
-        {/* Highlighted strike zone — the inner 3×3 box */}
+        {/* Highlighted strike zone — the center 3×3 box (cols 3-5, rows 3-5) */}
         <View
           style={[
             styles.strikeBox,
             compact && styles.strikeBoxCompact,
             {
-              left: cellW,
-              top: cellH,
+              left: cellW * 3,
+              top: cellH * 3,
               width: cellW * 3,
               height: cellH * 3,
             },
