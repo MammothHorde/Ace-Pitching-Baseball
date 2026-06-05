@@ -14,7 +14,7 @@ export function AccuracyMeter({ position, active = true }: AccuracyMeterProps) {
 
   let label = 'MISS';
   let labelColor = '#FF4757';
-  if (score >= 0.80) { label = 'PERFECT!'; labelColor = '#2ED573'; }
+  if (score >= 0.75) { label = 'PERFECT!'; labelColor = '#2ED573'; }
   else if (score >= 0.55) { label = 'GOOD'; labelColor = '#FFCC00'; }
   else if (score >= 0.35) { label = 'OK'; labelColor = '#FF9800'; }
 
@@ -71,8 +71,8 @@ const styles = StyleSheet.create({
   },
   perfectZoneBorder: {
     position: 'absolute',
-    left: '40%',
-    width: '20%',
+    left: '37.5%',
+    width: '25%',
     top: -3,
     bottom: -3,
     borderWidth: 2,

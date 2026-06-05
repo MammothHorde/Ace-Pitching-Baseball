@@ -14,6 +14,22 @@ the ball lands off the tapped cell.
 passed to BOTH `StrikeZone` props and `getZoneCenter` — never hardcode cell size in
 only one place.
 
+# Perfect-accuracy zone (3-place sync, hard constraint)
+The accuracy "perfect" band is defined in THREE places that must stay in lockstep,
+or the displayed white-border zone / PERFECT! label won't match the scored reward:
+1. `gameLogic.ts` `isPerfectAccuracy(accuracy)` threshold (currently `>= 0.75`).
+2. `AccuracyMeter.tsx` label logic (`score >= 0.75` → PERFECT!).
+3. `AccuracyMeter.tsx` `perfectZoneBorder` style (`left`/`width`) — the visible band.
+Relationship: accuracy = 1 - |pos-0.5|*2. Threshold T → band half-width (1-T)/2 each
+side of center, so border `left = 50% - (1-T)/2*100`, `width = (1-T)*100`. T=0.75 →
+left 37.5%, width 25% (band [0.375,0.625]). Earlier T was 0.80 (left 40%, width 20%).
+**How to apply:** changing perfect-zone forgiveness means editing all three together.
+
+# Global meter slowdown knob
+`meterSlowdown` (in game.tsx, currently 1.25) multiplies BOTH power & accuracy cycle
+durations on top of `diffSpeedMult`. 1.25 = 20% slower meters (period ×1.25). One
+constant tunes overall meter speed independent of difficulty.
+
 # Difficulty scaling direction (0..1, default 0.5)
 Higher difficulty = harder: FASTER accuracy needle (shorter cycle) + SMALLER zone.
 - speed: `diffSpeedMult = 1.4 - 0.85*difficulty` (1.4 easy … 0.55 hard) multiplies `accuracyCycleDuration`.

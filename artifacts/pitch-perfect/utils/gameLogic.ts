@@ -348,5 +348,6 @@ export function isPerfectPower(power: number): boolean {
 }
 
 export function isPerfectAccuracy(accuracy: number): boolean {
-  return accuracy >= 0.80;
+  // Perfect band widened 25% (was >= 0.80) so perfect-zone pitches land more often.
+  return accuracy >= 0.75;
 }
