@@ -376,7 +376,10 @@ export default function GameScreen() {
     if (batterRetired) {
       strikesRef.current = 0; setStrikes(0);
       ballsRef.current   = 0; setBalls(0);
-      if (isOut) { outsRef.current = currentOuts; setOuts(currentOuts); }
+      if (isOut) {
+        outsRef.current = currentOuts; setOuts(currentOuts);
+        setBatterIndex(currentOuts % 3);
+      }
 
       if (currentOuts >= 3 && isOut) {
         if (inningRef.current >= 1) {
@@ -408,7 +411,6 @@ export default function GameScreen() {
     selectedPitchRef.current = null; setSelectedPitch(null);
     phaseRef.current         = 'selecting';
     setPhase('selecting');
-    setBatterIndex(Math.floor(Math.random() * 3));
   }
 
   // PanResponder with ref-forwarding to prevent stale closures
