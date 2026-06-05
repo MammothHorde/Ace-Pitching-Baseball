@@ -1,2 +1,3 @@
 - [PitchPerfect strategy/scoring model](pitchperfect-strategy-model.md) — real-baseball strategy feeds outcome bias + flat post-multiplier scoring; history excludes current pitch; payoff win is success-gated.
 - [PitchPerfect audio & difficulty settings](pitchperfect-audio-difficulty.md) — strike-zone cell-size MUST sync between game.tsx zoneGeometry, StrikeZone props, and getZoneCenter; expo-audio web autoplay needs a gesture; difficulty 0..1 higher=harder.
+- [PitchPerfect SVG character animation](pitchperfect-svg-animation.md) — animate Animated.View style transforms, NEVER react-native-svg G transform props (they break/no-op on Expo web); rotate pivots at view center.
