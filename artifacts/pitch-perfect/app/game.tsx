@@ -145,8 +145,9 @@ export default function GameScreen() {
   const bottomPad = Platform.OS === 'web' ? 34 : insets.bottom;
 
   const diffSpeedMult        = 1.4 - 0.85 * settings.difficulty;  // 1.4 easy … 0.55 hard
-  const powerCycleDuration    = (820 + profile.stats.stamina * 90) * diffSpeedMult;
-  const accuracyCycleDuration = (600 + profile.stats.accuracy * 100) * diffSpeedMult;
+  const meterSlowdown         = 1.25;  // global 20% slower meters (period ×1.25)
+  const powerCycleDuration    = (820 + profile.stats.stamina * 90) * diffSpeedMult * meterSlowdown;
+  const accuracyCycleDuration = (600 + profile.stats.accuracy * 100) * diffSpeedMult * meterSlowdown;
 
   const { cellW, cellH, zoneW, zoneLeft, zoneTop } = useMemo(
     () => zoneGeometry(settings.difficulty),
