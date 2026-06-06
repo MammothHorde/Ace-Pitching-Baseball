@@ -37,10 +37,9 @@ export const BATTERS: BatterProfile[] = [
   },
 ];
 
-// ─── Heat-map helpers (used by StrikeZone & game.tsx) ────────────────────────
-// Maps the 9 heat-zone slots → the corresponding ZoneId in the 9×9 pitch grid.
-// Strike zone occupies rows 3-5, cols 3-5; cell = row*9 + col + 1.
-export const HEAT_ZONE_IDS = [31, 32, 33, 40, 41, 42, 49, 50, 51] as const;
+// ─── Heat-zone helpers (used by StrikeZone & game.tsx) ───────────────────────
+// Strike zone = rows 3-5, cols 3-5 (0-indexed) in the 9×9 pitch grid.
+// Zone slot index within the 3×3: (row-3)*3 + (col-3), row-major, top-left → bottom-right.
 
 const HOT_THRESHOLD  = 0.280;
 const COLD_THRESHOLD = 0.220;
@@ -55,24 +54,29 @@ export function fmtAvg(avg: number): string {
   return avg.toFixed(3).replace('0.', '.');
 }
 
-/** Returns a map of { [9×9 ZoneId]: hex heat color } for the given batter. */
-export function getHeatMap(batterIndex: number): Partial<Record<number, string>> {
-  const batter = BATTERS[batterIndex % BATTERS.length];
-  const map: Partial<Record<number, string>> = {};
-  batter.zones.forEach((zone, i) => {
-    map[HEAT_ZONE_IDS[i]] = zoneColor(zone.avg);
-  });
-  return map;
+/**
+ * Returns the 9 batting averages for the batter in row-major order within the 3×3 strike zone:
+ *   [up-in, up-mid, up-away, mid-in, heart, mid-away, down-in, down-mid, down-away]
+ * Pass directly to StrikeZone's `heatZoneAvgs` prop — colors are computed from cell position,
+ * never from zone IDs, so alignment is guaranteed.
+ */
+export function getBatterAvgs(batterIndex: number): readonly number[] {
+  return BATTERS[batterIndex % BATTERS.length].zones.map(z => z.avg);
 }
 
-/** Returns the stat for a given 9×9 ZoneId, or null if it's outside the strike zone. */
+/**
+ * Returns the stat for a given 9×9 ZoneId, or null if it's outside the strike zone.
+ * Uses position math (row/col offset) so there is no ID-mapping that can drift.
+ */
 export function getZoneStat(
   batterIndex: number,
   zoneId: number,
 ): { label: string; avg: number } | null {
-  const idx = (HEAT_ZONE_IDS as readonly number[]).indexOf(zoneId);
-  if (idx === -1) return null;
-  return BATTERS[batterIndex % BATTERS.length].zones[idx];
+  const col = (zoneId - 1) % 9;
+  const row = Math.floor((zoneId - 1) / 9);
+  if (col < 3 || col > 5 || row < 3 || row > 5) return null;
+  const idx = (row - 3) * 3 + (col - 3);
+  return BATTERS[batterIndex % BATTERS.length].zones[idx] ?? null;
 }
 
 // ─── Compact info strip ───────────────────────────────────────────────────────
