@@ -67,9 +67,10 @@ function zoneGeometry(difficulty: number) {
   const zoneLeft = (SCREEN_W - zoneW) / 2;
   // szLeft = where the inner 3×3 strike-zone starts horizontally.
   const szLeft  = zoneLeft + cornerW;
-  // Vertical: target upper part of the pitcher's-POV scene (batter's knees to elbows).
+  // Vertical: batter's belt/elbow level → hollow below kneecap (≈ 45 – 65 % of scene).
+  // szTop sits at the top of the inner 3×3; with gridH ≈ 90 the bottom lands at ~65 %.
   const gridH   = cellH * 3;
-  const topDesired = SCENE_H * 0.26;
+  const topDesired = SCENE_H * 0.45;
   const topMax  = Math.max(8, SCENE_H - gridH - 8);
   const szTop   = Math.max(8, Math.min(topDesired, topMax));
   return { cellW, cellH, cornerW, zoneW, zoneLeft, szLeft, szTop };

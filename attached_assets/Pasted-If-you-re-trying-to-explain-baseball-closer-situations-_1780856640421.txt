@@ -1,0 +1,67 @@
+If you're trying to explain baseball closer situations to an AI (for game design, simulation, or content generation), it's helpful to describe them in terms of **inning, score margin, baserunners, outs, and leverage**.
+
+### Simple Definition
+
+> A closer is a relief pitcher brought into the game in the late innings to protect a lead and secure the final outs.
+
+### Common Closer Scenarios
+
+#### Standard Save Situation
+
+* 9th inning
+* Team leads by 1–3 runs
+* Bases empty
+* Goal: record final 3 outs
+
+**AI Prompt Example:**
+
+> "The closer enters in the bottom of the 9th inning with a 2-run lead and no runners on base. The crowd is tense because one mistake could tie the game."
+
+#### High-Pressure Save
+
+* 9th inning
+* 1-run lead
+* Runners on base
+* Heart of the opposing lineup due up
+
+**AI Prompt Example:**
+
+> "The closer enters with a 1-run lead, runners on first and second, one out, and the opponent's best hitter at the plate."
+
+#### Fireman Situation
+
+* 8th inning
+* Lead is threatened
+* Inherited runners
+
+**AI Prompt Example:**
+
+> "The team's elite reliever enters in the 8th inning with the bases loaded and a 2-run lead. One extra-base hit could change the game."
+
+#### Four-Out Save
+
+* 8th inning, two outs
+* Small lead
+* Stays through the 9th
+
+**AI Prompt Example:**
+
+> "The closer is called upon for a four-out save, entering with two outs in the 8th and protecting a 2-run lead."
+
+### If You're Building a Baseball Game
+
+You could classify closer situations by "pressure level":
+
+| Pressure  | Situation                                |
+| --------- | ---------------------------------------- |
+| Low       | 3-run lead, bases empty                  |
+| Medium    | 2-run lead, runner on base               |
+| High      | 1-run lead, tying run on base            |
+| Extreme   | Bases loaded, tying run on third         |
+| Legendary | Tie game in playoffs, season on the line |
+
+### Example AI-Friendly Template
+
+> "Generate a baseball closer scenario. Include: inning (8th or 9th), score difference (1–3 runs), number of outs, runners on base, quality of opposing hitters, crowd intensity, and game importance."
+
+This structure works especially well if you're generating dynamic situations for your pitcher-focused arcade game because it gives the AI clear variables to adjust difficulty and drama.
