@@ -15,16 +15,16 @@ export type SfxName =
   | 'boo';
 
 const SFX_SOURCES: Record<SfxName, number> = {
-  throw: require('@/assets/audio/throw.mp3'),
-  mitt: require('@/assets/audio/mitt.mp3'),
-  hit: require('@/assets/audio/hit.mp3'),
-  cheer: require('@/assets/audio/cheer.mp3'),
-  tap: require('@/assets/audio/tap.mp3'),
-  umpBall: require('@/assets/audio/ump_ball.mp3'),
-  umpStrike1: require('@/assets/audio/ump_strike1.mp3'),
-  umpStrike2: require('@/assets/audio/ump_strike2.mp3'),
+  throw:        require('@/assets/audio/throw.mp3'),
+  mitt:         require('@/assets/audio/mitt.mp3'),
+  hit:          require('@/assets/audio/hit.mp3'),
+  cheer:        require('@/assets/audio/cheer.mp3'),
+  tap:          require('@/assets/audio/tap.mp3'),
+  umpBall:      require('@/assets/audio/ump_ball.mp3'),
+  umpStrike1:   require('@/assets/audio/ump_strike1.mp3'),
+  umpStrike2:   require('@/assets/audio/ump_strike2.mp3'),
   umpStrikeout: require('@/assets/audio/ump_strikeout.mp3'),
-  boo: require('@/assets/audio/boo.mp3'),
+  boo:          require('@/assets/audio/boo.mp3'),
 };
 
 interface AudioContextType {
@@ -37,28 +37,56 @@ const AudioCtx = createContext<AudioContextType | null>(null);
 
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const { settings } = usePitcher();
-  const bgmRef = useRef<AudioPlayer | null>(null);
-  const sfxRef = useRef<Partial<Record<SfxName, AudioPlayer>>>({});
+  const bgmRef    = useRef<AudioPlayer | null>(null);
+  const sfxRef    = useRef<Partial<Record<SfxName, AudioPlayer>>>({});
   const bgmVolRef = useRef(settings.bgmVolume);
   const sfxVolRef = useRef(settings.sfxVolume);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  // Create players once.
+  // ── One-time setup ─────────────────────────────────────────────────────────
+  // We AWAIT setAudioModeAsync before creating any players.  On iOS the audio
+  // session must be configured first — skipping the await means createAudioPlayer
+  // starts loading while the session is still in its default state, causing
+  // play() to silently fail in the simulator.
   useEffect(() => {
-    setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
+    let mounted = true;
 
-    const bgm = createAudioPlayer(require('@/assets/audio/bgm.mp3'));
-    bgm.loop = true;
-    bgm.volume = bgmVolRef.current;
-    bgmRef.current = bgm;
+    async function init() {
+      try {
+        await setAudioModeAsync({
+          playsInSilentMode: true,    // honour the ringer switch on iOS
+          interruptionMode:  'duckOthers',
+          allowsRecording:   false,
+          shouldPlayInBackground: false,
+        });
+      } catch { /* simulators may not support every mode option */ }
 
-    (Object.keys(SFX_SOURCES) as SfxName[]).forEach(name => {
-      const p = createAudioPlayer(SFX_SOURCES[name]);
-      p.volume = sfxVolRef.current;
-      sfxRef.current[name] = p;
-    });
+      if (!mounted) return;
+
+      // BGM
+      const bgm  = createAudioPlayer(require('@/assets/audio/bgm.mp3'));
+      bgm.loop   = true;
+      bgm.volume = bgmVolRef.current;
+      bgmRef.current = bgm;
+
+      // Start BGM right away on native; web will block until first gesture.
+      if (bgmVolRef.current > 0) {
+        try { bgm.play(); } catch { /* web autoplay policy — first tap unblocks */ }
+      }
+
+      // SFX players
+      (Object.keys(SFX_SOURCES) as SfxName[]).forEach(name => {
+        if (!mounted) return;
+        const p  = createAudioPlayer(SFX_SOURCES[name]!);
+        p.volume = sfxVolRef.current;
+        sfxRef.current[name] = p;
+      });
+    }
+
+    init();
 
     return () => {
+      mounted = false;
       timersRef.current.forEach(clearTimeout);
       timersRef.current = [];
       bgmRef.current?.remove();
@@ -68,27 +96,29 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // React to volume changes. Browsers block autoplay until a user gesture, so
-  // bgm reliably starts on the first tap (see playSfx) or when the music slider
-  // is moved — both are user gestures.
+  // ── BGM volume / play state ─────────────────────────────────────────────────
   useEffect(() => {
     bgmVolRef.current = settings.bgmVolume;
     const bgm = bgmRef.current;
     if (!bgm) return;
     bgm.volume = settings.bgmVolume;
     if (settings.bgmVolume > 0) {
-      try { bgm.play(); } catch { /* autoplay blocked until gesture */ }
+      if (!bgm.playing) {
+        try { bgm.play(); } catch { /* web: need gesture first */ }
+      }
     } else {
       bgm.pause();
     }
   }, [settings.bgmVolume]);
 
+  // ── SFX volume ──────────────────────────────────────────────────────────────
   useEffect(() => {
     sfxVolRef.current = settings.sfxVolume;
   }, [settings.sfxVolume]);
 
+  // ── Play helpers ────────────────────────────────────────────────────────────
   const playSfx = (name: SfxName) => {
-    // First tap doubles as the gesture that unblocks background music on web.
+    // First tap also unblocks BGM autoplay on web.
     const bgm = bgmRef.current;
     if (bgm && bgmVolRef.current > 0 && !bgm.playing) {
       try { bgm.play(); } catch { /* ignore */ }
