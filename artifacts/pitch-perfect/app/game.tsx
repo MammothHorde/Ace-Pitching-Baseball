@@ -465,6 +465,7 @@ export default function GameScreen() {
           fromY={BALL_FROM_Y}
           toX={ballTarget.x}
           toY={ballTarget.y}
+          pitchType={selectedPitch ?? undefined}
         />
       </View>
 
