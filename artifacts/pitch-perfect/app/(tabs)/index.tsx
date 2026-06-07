@@ -52,8 +52,8 @@ export default function HomeScreen() {
       >
         <View style={styles.logoBlock}>
           <MaterialCommunityIcons name="baseball" size={68} color="#FF4757" />
-          <Text style={styles.title}>ACE PITCHING</Text>
-          <Text style={styles.titleAccent}>BASEBALL</Text>
+          <Text style={styles.title}>THE</Text>
+          <Text style={styles.titleAccent}>CLOSER</Text>
           <Text style={styles.tagline}>Show 'em what you've got!</Text>
         </View>
 
