@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Image,
   ImageBackground,
   Platform,
   ScrollView,
@@ -51,10 +52,11 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.logoBlock}>
-          <MaterialCommunityIcons name="baseball" size={68} color="#FF4757" />
-          <Text style={styles.title}>THE</Text>
-          <Text style={styles.titleAccent}>CLOSER</Text>
-          <Text style={styles.tagline}>Show 'em what you've got!</Text>
+          <Image
+            source={require('@/assets/images/icon.png')}
+            style={styles.logoIcon}
+            resizeMode="contain"
+          />
         </View>
 
         {!isLoading && (
@@ -151,16 +153,8 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0B1E3D' },
   scroll: { paddingHorizontal: 24, alignItems: 'center', gap: 14 },
-  logoBlock: { alignItems: 'center' },
-  title: {
-    fontSize: 54, fontWeight: '900', color: '#FFFFFF', letterSpacing: 4, lineHeight: 58,
-    textAlign: 'center',
-  },
-  titleAccent: {
-    fontSize: 54, fontWeight: '900', color: '#FF4757', letterSpacing: 4, marginTop: -6,
-    textAlign: 'center',
-  },
-  tagline: { color: 'rgba(255,255,255,0.55)', fontSize: 15, fontWeight: '600', marginTop: 8 },
+  logoBlock: { alignItems: 'center', width: '100%' },
+  logoIcon: { width: 260, height: 260 },
   card: {
     width: '100%',
     backgroundColor: 'rgba(22,40,71,0.9)',
