@@ -16,19 +16,19 @@ title = "generated_image"
 id = "IoT07ubf2jGhkTvbC7P9M"
 uri = "file://artifacts/pitch-perfect/assets/images/batter_1.png"
 type = "image"
-title = "batter 1 big mac ready stance"
+title = "batter 1 pitchers perspective"
 
 [[generated]]
 id = "P9PwEpAUyY9awYDZ1a2Jt"
 uri = "file://artifacts/pitch-perfect/assets/images/batter_2.png"
 type = "image"
-title = "batter 2 slap jack ready stance"
+title = "batter 2 pitchers perspective"
 
 [[generated]]
 id = "8RG1ziIV6WIbzGdzgNSew"
 uri = "file://artifacts/pitch-perfect/assets/images/batter_3.png"
 type = "image"
-title = "batter 3 high fly ready stance"
+title = "batter 3 pitchers perspective"
 
 [[outputs]]
 id = "x07VhkfH3oS9cBXWD0mp1"
