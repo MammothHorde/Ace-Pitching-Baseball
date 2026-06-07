@@ -488,7 +488,7 @@ export default function GameScreen() {
 
         {/* Pre-selection guidance prompt — sits directly above the pitch type selector */}
         {phase === 'selecting' && !canPitch && (
-          <View style={styles.pitchZone}>
+          <View style={styles.selectionPrompt}>
             <View style={styles.promptBox}>
               <Text style={styles.promptText}>
                 {!selectedZone
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
-  pitchZone: { borderRadius: 20, overflow: 'hidden' },
+  selectionPrompt: { borderRadius: 20, overflow: 'hidden' },
   metersRow: {
     flexDirection: 'row',
     alignItems: 'center',
