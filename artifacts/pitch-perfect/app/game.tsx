@@ -48,9 +48,8 @@ import { HotColdZones, getBatterAvgs } from '@/components/HotColdZones';
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const SCENE_H = Math.min(SCREEN_H * 0.52, 440);
 // MLB 13-zone: 3×3 inner strike zone + 4 corner shadow zones.
-// Larger base cells than the old 9×9 grid since we have far fewer zones.
-const BASE_CELL_W = 52;
-const BASE_CELL_H = 44;
+const BASE_CELL_W = 36;
+const BASE_CELL_H = 30;
 const BALL_FROM_X = SCREEN_W / 2;
 const BALL_FROM_Y = SCENE_H * 0.96;
 
@@ -68,9 +67,9 @@ function zoneGeometry(difficulty: number) {
   const zoneLeft = (SCREEN_W - zoneW) / 2;
   // szLeft = where the inner 3×3 strike-zone starts horizontally.
   const szLeft  = zoneLeft + cornerW;
-  // Vertical: target the plate/batter-torso area in the pitcher's-POV scene.
+  // Vertical: target upper part of the pitcher's-POV scene (batter's knees to elbows).
   const gridH   = cellH * 3;
-  const topDesired = SCENE_H * 0.40;
+  const topDesired = SCENE_H * 0.26;
   const topMax  = Math.max(8, SCENE_H - gridH - 8);
   const szTop   = Math.max(8, Math.min(topDesired, topMax));
   return { cellW, cellH, cornerW, zoneW, zoneLeft, szLeft, szTop };

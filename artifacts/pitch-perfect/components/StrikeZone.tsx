@@ -1,55 +1,35 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import type { ZoneId } from '@/constants/GameTypes';
 
 // ─── Zone classification ──────────────────────────────────────────────────────
-// Inner 3×3 strike zone: zones 1-9 (row-major, left→right, top→bottom)
-// Corner shadow ball zones: 11 (upper-inside), 12 (upper-away),
-//                           13 (lower-inside), 14 (lower-away)
-const STRIKE_ZONES  = new Set<ZoneId>([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 const PAINTED_CORNERS = new Set<ZoneId>([1, 3, 7, 9]);
 const HEART: ZoneId = 5;
-
-type CellKind = 'heart' | 'corner' | 'edge' | 'shadow';
-function cellKind(z: ZoneId): CellKind {
-  if (!STRIKE_ZONES.has(z))   return 'shadow';
-  if (z === HEART)             return 'heart';
-  if (PAINTED_CORNERS.has(z)) return 'corner';
-  return 'edge';
-}
+const STRIKE_ZONES = new Set<ZoneId>([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
 // ─── Heat-color helpers ───────────────────────────────────────────────────────
-const HOT_THRESHOLD  = 0.280;
-const COLD_THRESHOLD = 0.220;
-
-function avgToHeatColor(avg: number): string {
-  if (avg > HOT_THRESHOLD)  return '#D63031';
-  if (avg < COLD_THRESHOLD) return '#0984E3';
+const HOT  = 0.280;
+const COLD = 0.220;
+function avgToHeatColor(avg: number) {
+  if (avg > HOT)  return '#D63031';
+  if (avg < COLD) return '#0984E3';
   return '#636E72';
 }
-function heatBg(hex: string): string {
-  if (hex === '#D63031') return 'rgba(214,48,49,0.52)';
-  if (hex === '#0984E3') return 'rgba(9,132,227,0.48)';
-  return 'rgba(99,110,114,0.40)';
-}
-function heatBorder(hex: string): string {
-  if (hex === '#D63031') return 'rgba(214,48,49,0.85)';
-  if (hex === '#0984E3') return 'rgba(9,132,227,0.85)';
-  return 'rgba(99,110,114,0.65)';
+function heatBg(c: string) {
+  if (c === '#D63031') return 'rgba(214,48,49,0.55)';
+  if (c === '#0984E3') return 'rgba(9,132,227,0.52)';
+  return 'rgba(99,110,114,0.42)';
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
-interface StrikeZoneProps {
+interface Props {
   selectedZone: ZoneId | null;
   onSelectZone: (zone: ZoneId) => void;
   disabled?: boolean;
   compact?: boolean;
   cellWidth?: number;
   cellHeight?: number;
-  /**
-   * 9 batting averages in row-major order for zones 1-9:
-   *   index 0 = zone 1 (up-in) … index 8 = zone 9 (down-away)
-   */
+  /** 9 batting-average values, zones 1-9 in row-major order (index = zone - 1). */
   heatZoneAvgs?: readonly number[];
 }
 
@@ -62,152 +42,134 @@ export function StrikeZone({
   cellWidth,
   cellHeight,
   heatZoneAvgs,
-}: StrikeZoneProps) {
-  const cellW = cellWidth  ?? (compact ? 46 : 60);
-  const cellH = cellHeight ?? (compact ? 38 : 50);
-  // Corner shadow zones are slightly narrower than the inner cells.
+}: Props) {
+  const cellW = cellWidth  ?? (compact ? 36 : 52);
+  const cellH = cellHeight ?? (compact ? 30 : 44);
   const cornW = Math.round(cellW * 0.72);
   const cornH = cellH;
 
-  function renderCell(zone: ZoneId) {
+  // ── Inner 3×3 cell ──────────────────────────────────────────────────────────
+  function renderInner(zone: ZoneId) {
     const isSelected = selectedZone === zone;
-    const kind = cellKind(zone);
-    const isShadow = kind === 'shadow';
-    const w = isShadow ? cornW : cellW;
-    const h = isShadow ? cornH : cellH;
-
     let bg: string;
-    let borderColor: string;
-    let borderStyle: 'solid' | 'dashed' = 'solid';
-
-    switch (kind) {
-      case 'heart':
-        bg = 'rgba(255,71,87,0.22)';
-        borderColor = 'rgba(255,71,87,0.45)';
-        break;
-      case 'corner':
-        bg = 'rgba(255,204,0,0.18)';
-        borderColor = 'rgba(255,204,0,0.50)';
-        break;
-      case 'edge':
-        bg = 'rgba(46,213,115,0.14)';
-        borderColor = 'rgba(46,213,115,0.35)';
-        break;
-      default: // shadow
-        bg = 'rgba(11,30,61,0.45)';
-        borderColor = 'rgba(255,255,255,0.20)';
-        borderStyle = 'dashed';
-    }
-
-    // Heat overlay on strike-zone cells (zones 1-9) when not selected.
-    if (!isSelected && heatZoneAvgs && STRIKE_ZONES.has(zone)) {
-      const avg = heatZoneAvgs[zone - 1]; // zones 1-9 → indices 0-8
-      if (avg !== undefined) {
-        const hc = avgToHeatColor(avg);
-        bg = heatBg(hc);
-        borderColor = heatBorder(hc);
-        borderStyle = 'solid';
-      }
-    }
 
     if (isSelected) {
       bg = '#FFCC00';
-      borderColor = '#FFAA00';
-      borderStyle = 'solid';
+    } else if (heatZoneAvgs) {
+      const avg = heatZoneAvgs[zone - 1];
+      bg = avg !== undefined ? heatBg(avgToHeatColor(avg)) : defaultBg(zone);
+    } else {
+      bg = defaultBg(zone);
     }
 
     return (
       <TouchableOpacity
         key={zone}
+        style={[styles.innerCell, { width: cellW, height: cellH, backgroundColor: bg }]}
+        onPress={() => !disabled && onSelectZone(zone)}
+        activeOpacity={0.55}
+      >
+        {isSelected && <View style={styles.dot} />}
+      </TouchableOpacity>
+    );
+  }
+
+  // ── Corner shadow cell ──────────────────────────────────────────────────────
+  function renderCorner(zone: ZoneId) {
+    const isSelected = selectedZone === zone;
+    return (
+      <TouchableOpacity
+        key={zone}
         style={[
-          styles.cell,
+          styles.cornerCell,
           {
-            width: w,
-            height: h,
-            backgroundColor: bg,
-            borderColor,
-            borderStyle,
-            borderRadius: isShadow ? 6 : 3,
+            width: cornW,
+            height: cornH,
+            backgroundColor: isSelected ? '#FFCC00' : 'rgba(11,30,61,0.55)',
           },
         ]}
         onPress={() => !disabled && onSelectZone(zone)}
         activeOpacity={0.55}
       >
-        {compact
-          ? isSelected && <View style={styles.selectedDot} />
-          : null
-        }
+        {isSelected && <View style={styles.dot} />}
       </TouchableOpacity>
     );
   }
 
-  // ── Layout:
-  // Row 1: [11] [1][2][3] [12]
-  // Row 2: spacer [4][5][6] spacer
-  // Row 3: [13] [7][8][9] [14]
+  // Layout:
+  //   [ left-col: 11 / gap / 13 ]  [ 3×3 box ]  [ right-col: 12 / gap / 14 ]
   return (
     <View style={styles.container}>
-      <View style={styles.grid}>
-        {/* Row 1 */}
-        <View style={styles.row}>
-          {renderCell(11)}
-          <View style={styles.szRow}>
-            {renderCell(1)}{renderCell(2)}{renderCell(3)}
-          </View>
-          {renderCell(12)}
-        </View>
+      {/* Left corner column */}
+      <View style={styles.cornerCol}>
+        {renderCorner(11)}
+        <View style={{ height: cornH }} />
+        {renderCorner(13)}
+      </View>
 
-        {/* Row 2 — no corner zones, use spacers to keep alignment */}
-        <View style={styles.row}>
-          <View style={{ width: cornW, height: cornH }} />
-          <View style={styles.szRow}>
-            {renderCell(4)}{renderCell(5)}{renderCell(6)}
-          </View>
-          <View style={{ width: cornW, height: cornH }} />
-        </View>
+      {/* Inner 3×3 — single green border, no gaps between cells */}
+      <View style={styles.szBox}>
+        <View style={styles.szRow}>{renderInner(1)}{renderInner(2)}{renderInner(3)}</View>
+        <View style={styles.szRow}>{renderInner(4)}{renderInner(5)}{renderInner(6)}</View>
+        <View style={styles.szRow}>{renderInner(7)}{renderInner(8)}{renderInner(9)}</View>
+      </View>
 
-        {/* Row 3 */}
-        <View style={styles.row}>
-          {renderCell(13)}
-          <View style={styles.szRow}>
-            {renderCell(7)}{renderCell(8)}{renderCell(9)}
-          </View>
-          {renderCell(14)}
-        </View>
+      {/* Right corner column */}
+      <View style={styles.cornerCol}>
+        {renderCorner(12)}
+        <View style={{ height: cornH }} />
+        {renderCorner(14)}
       </View>
     </View>
   );
 }
 
+// ── Zone default background ───────────────────────────────────────────────────
+function defaultBg(zone: ZoneId): string {
+  if (zone === HEART)              return 'rgba(255,71,87,0.28)';
+  if (PAINTED_CORNERS.has(zone))   return 'rgba(255,204,0,0.22)';
+  return 'rgba(46,213,115,0.18)';
+}
+
+// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { alignItems: 'center' },
-
-  grid: {
-    flexDirection: 'column',
-    gap: 3,
-  },
-  row: {
+  container: {
     flexDirection: 'row',
-    alignItems:    'center',
+    alignItems:    'flex-start',
     gap: 3,
   },
 
-  // The inner 3×3 block gets the green strike-zone border.
+  // Single green border wrapping all 9 cells — no gaps inside.
+  szBox: {
+    borderWidth:  2.5,
+    borderColor:  'rgba(46,213,115,0.92)',
+    borderRadius: 5,
+    overflow:     'hidden',
+    flexDirection: 'column',
+  },
   szRow: {
     flexDirection: 'row',
-    borderWidth:   2.5,
-    borderColor:   'rgba(46,213,115,0.90)',
-    borderRadius:  5,
-    overflow:      'hidden',
   },
 
-  cell: {
-    borderWidth:    1,
+  // Inner cell — no individual border; rely on the outer szBox border.
+  innerCell: {
     alignItems:     'center',
     justifyContent: 'center',
   },
 
-  selectedDot: {
+  cornerCol: {
+    flexDirection: 'column',
+  },
+  cornerCell: {
+    borderWidth:   1,
+    borderColor:   'rgba(255,255,255,0.22)',
+    borderStyle:   'dashed',
+    borderRadius:  5,
+    alignItems:    'center',
+    justifyContent: 'center',
+  },
+
+  dot: {
     width:           8,
     height:          8,
     borderRadius:    4,
