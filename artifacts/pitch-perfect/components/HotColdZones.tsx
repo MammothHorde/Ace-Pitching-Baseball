@@ -2,21 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 // ─── Batter profiles ─────────────────────────────────────────────────────────
-// 9 heat-zone entries per batter, row-major top-left → bottom-right:
-//   (0) Up-In    (1) Up-Mid    (2) Up-Away
-//   (3) Mid-In   (4) Heart     (5) Mid-Away
-//   (6) Down-In  (7) Down-Mid  (8) Down-Away
+// 9 heat-zone entries per batter, mapped to MLB zones 1-9 (row-major):
+//   Zone 1 (Up & In)      Zone 2 (Up & Middle)   Zone 3 (Up & Away)
+//   Zone 4 (Middle In)    Zone 5 (Heart)          Zone 6 (Middle Away)
+//   Zone 7 (Down & In)    Zone 8 (Down Middle)    Zone 9 (Down & Away)
 const LABELS = [
   'Up & In', 'Up & Middle', 'Up & Away',
   'Middle In', 'Heart', 'Middle Away',
   'Down & In', 'Down Middle', 'Down & Away',
 ] as const;
 
-interface ZoneEntry   { label: string; avg: number }
+interface ZoneEntry    { label: string; avg: number }
 interface BatterProfile { name: string; scout: string; zones: ZoneEntry[] }
 
 function makeZones(avgs: readonly number[]): ZoneEntry[] {
-  return avgs.map((avg, i) => ({ label: LABELS[i], avg }));
+  return avgs.map((avg, i) => ({ label: LABELS[i]!, avg }));
 }
 
 export const BATTERS: BatterProfile[] = [
@@ -37,9 +37,7 @@ export const BATTERS: BatterProfile[] = [
   },
 ];
 
-// ─── Heat-zone helpers (used by StrikeZone & game.tsx) ───────────────────────
-// Strike zone = rows 3-5, cols 3-5 (0-indexed) in the 9×9 pitch grid.
-// Zone slot index within the 3×3: (row-3)*3 + (col-3), row-major, top-left → bottom-right.
+// ─── Heat-zone helpers ────────────────────────────────────────────────────────
 
 const HOT_THRESHOLD  = 0.280;
 const COLD_THRESHOLD = 0.220;
@@ -55,28 +53,24 @@ export function fmtAvg(avg: number): string {
 }
 
 /**
- * Returns the 9 batting averages for the batter in row-major order within the 3×3 strike zone:
- *   [up-in, up-mid, up-away, mid-in, heart, mid-away, down-in, down-mid, down-away]
- * Pass directly to StrikeZone's `heatZoneAvgs` prop — colors are computed from cell position,
- * never from zone IDs, so alignment is guaranteed.
+ * Returns the 9 batting averages for the batter in zone order (zones 1-9):
+ *   [z1, z2, z3, z4, z5, z6, z7, z8, z9]
+ * Pass directly to StrikeZone's `heatZoneAvgs` prop.
  */
 export function getBatterAvgs(batterIndex: number): readonly number[] {
-  return BATTERS[batterIndex % BATTERS.length].zones.map(z => z.avg);
+  return BATTERS[batterIndex % BATTERS.length]!.zones.map(z => z.avg);
 }
 
 /**
- * Returns the stat for a given 9×9 ZoneId, or null if it's outside the strike zone.
- * Uses position math (row/col offset) so there is no ID-mapping that can drift.
+ * Returns the stat for a given MLB zone ID (1-9), or null for ball zones (11-14).
+ * Zone 1 → index 0 (Up & In) … Zone 9 → index 8 (Down & Away).
  */
 export function getZoneStat(
   batterIndex: number,
   zoneId: number,
 ): { label: string; avg: number } | null {
-  const col = (zoneId - 1) % 9;
-  const row = Math.floor((zoneId - 1) / 9);
-  if (col < 3 || col > 5 || row < 3 || row > 5) return null;
-  const idx = (row - 3) * 3 + (col - 3);
-  return BATTERS[batterIndex % BATTERS.length].zones[idx] ?? null;
+  if (zoneId < 1 || zoneId > 9) return null; // corner shadow zones have no heat data
+  return BATTERS[batterIndex % BATTERS.length]!.zones[zoneId - 1] ?? null;
 }
 
 // ─── Compact info strip ───────────────────────────────────────────────────────
@@ -86,10 +80,9 @@ interface Props {
 }
 
 export function HotColdZones({ batterIndex, selectedZoneId }: Props) {
-  const batter = BATTERS[batterIndex % BATTERS.length];
+  const batter = BATTERS[batterIndex % BATTERS.length]!;
   const [lastStat, setLastStat] = useState<{ label: string; avg: number } | null>(null);
 
-  // Update tooltip when selected zone changes
   useEffect(() => {
     if (selectedZoneId != null) {
       const stat = getZoneStat(batterIndex, selectedZoneId);
@@ -97,7 +90,6 @@ export function HotColdZones({ batterIndex, selectedZoneId }: Props) {
     }
   }, [selectedZoneId, batterIndex]);
 
-  // Clear tooltip on batter change
   useEffect(() => { setLastStat(null); }, [batterIndex]);
 
   const activeStat = selectedZoneId != null
@@ -107,14 +99,12 @@ export function HotColdZones({ batterIndex, selectedZoneId }: Props) {
   return (
     <View style={styles.container}>
 
-      {/* Batter identity */}
       <View style={styles.header}>
         <Text style={styles.title}>🔥 HOT &amp; COLD ZONES</Text>
         <Text style={styles.batterName}>{batter.name}</Text>
         <Text style={styles.scoutNote}>{batter.scout}</Text>
       </View>
 
-      {/* Legend + tooltip on one line */}
       <View style={styles.footer}>
         <View style={styles.legend}>
           <View style={[styles.dot, { backgroundColor: '#D63031' }]} />
@@ -146,7 +136,6 @@ export function HotColdZones({ batterIndex, selectedZoneId }: Props) {
   );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',

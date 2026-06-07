@@ -31,43 +31,42 @@ export function getAvailablePoints(profile: { lifetimePoints: number; spentPoint
   return profile.lifetimePoints - profile.spentPoints;
 }
 
-// ─── Real-baseball strategy model ───────────────────────────────────────────
+// ─── MLB 13-Zone system ──────────────────────────────────────────────────────
 //
-// Three dimensions of pitching strategy from the research:
-//   • Location — the heart of the plate is dangerous; corners/edges are safe;
-//     down & away is the single best spot.
-//   • Speed    — fastballs set the table; offspeed disrupts timing; "pitching
-//     backwards" (offspeed when a hitter is sitting fastball) is devastating.
-//   • Sequence — never be predictable; tunnel pitches off the same look;
-//     the count dictates the plan, peaking at the 3-2 "payoff pitch".
+// Inner 3×3 strike zone — zones 1-9 (row-major, left→right, top→bottom):
+//   1  2  3   (upper tier)
+//   4  5  6   (middle tier)
+//   7  8  9   (lower tier)
+//
+// Corner shadow zones — just outside the strike zone corners:
+//   11 = upper-inside   12 = upper-away
+//   13 = lower-inside   14 = lower-away
+//
+// Strategy model:
+//   • Heart (5) most hittable; painted corners (1,3,7,9) nastiest strike.
+//   • Down & away (9) is the premium pitcher's spot.
+//   • Corner shadows (11-14) are ball zones — force a chase or take the walk.
 
-// 9-wide × 9-tall pitch grid (81 cells, numbered row-major top→bottom). The
-// center 3×3 (columns 3-5, rows 3-5 — cells 31-33, 40-42, 49-51) is the actual
-// STRIKE ZONE; everything outside that center block is out of the zone — a taken
-// pitch there is a ball. The strike zone sits dead-center inside a 3-cell-thick
-// "ball" ring on every side. Cell 41 is dead center.
-const ZONE_GRID = 9;
-const zCol = (z: ZoneId) => (z - 1) % ZONE_GRID;        // 0 (inside edge) … 8 (outside edge)
-const zRow = (z: ZoneId) => Math.floor((z - 1) / ZONE_GRID); // 0 (top) … 8 (bottom)
-const ALL_ZONES = Array.from({ length: ZONE_GRID * ZONE_GRID }, (_, i) => (i + 1) as ZoneId);
+// Zones in the actual strike zone (taken pitch here = called strike).
+export const STRIKE_ZONE  = new Set<ZoneId>([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
-// Center 3×3 = the strike zone (columns 3-5, rows 3-5).
-const inStrikeZone = (z: ZoneId) =>
-  zCol(z) >= 3 && zCol(z) <= 5 && zRow(z) >= 3 && zRow(z) <= 5;
-// Corner of the strike zone — the "painted" edge, the nastiest strike to hit.
-const isZoneCorner = (z: ZoneId) =>
-  inStrikeZone(z) && (zCol(z) === 3 || zCol(z) === 5) && (zRow(z) === 3 || zRow(z) === 5);
+// Painted corners of the 3×3 — hardest spots to barrel.
+export const CORNER_ZONES = new Set<ZoneId>([1, 3, 7, 9]);
 
-export const STRIKE_ZONE  = new Set<ZoneId>(ALL_ZONES.filter(inStrikeZone)); // 31-33,40-42,49-51
-export const CORNER_ZONES = new Set<ZoneId>(ALL_ZONES.filter(isZoneCorner)); // 31, 33, 49, 51
-export const HEART_ZONE: ZoneId = 41; // dead center — most hittable
-// Non-corner edges of the strike zone (still strikes, a touch tougher to barrel).
-export const EDGE_ZONES   = new Set<ZoneId>(
-  ALL_ZONES.filter(z => inStrikeZone(z) && !isZoneCorner(z) && z !== HEART_ZONE), // 32, 40, 42, 50
-);
-export const HIGH_ZONES  = new Set<ZoneId>(ALL_ZONES.filter(z => zRow(z) <= 2)); // above the zone
-export const LOW_ZONES   = new Set<ZoneId>(ALL_ZONES.filter(z => zRow(z) >= 6)); // below the zone
-const DOWN_AND_AWAY: ZoneId = 51; // low-outside corner of the strike zone — premium spot
+// Dead center — most hittable.
+export const HEART_ZONE: ZoneId = 5;
+
+// Non-corner edges of the 3×3.
+export const EDGE_ZONES   = new Set<ZoneId>([2, 4, 6, 8]);
+
+// High pitches (top row of SZ + top corner shadows).
+export const HIGH_ZONES   = new Set<ZoneId>([1, 2, 3, 11, 12]);
+
+// Low pitches (bottom row of SZ + bottom corner shadows).
+export const LOW_ZONES    = new Set<ZoneId>([7, 8, 9, 13, 14]);
+
+// Down & away — the single best pitcher's spot (lower-away corner of SZ).
+const DOWN_AND_AWAY: ZoneId = 9;
 
 export function isInStrikeZone(zone: ZoneId): boolean {
   return STRIKE_ZONE.has(zone);
@@ -145,8 +144,7 @@ export interface StrategyEval {
   downAndAway: boolean;
 }
 
-/** Pure read of the strategy context — no randomness. Used by both the
- *  outcome model (to bias contact) and the scoring model (to award bonuses). */
+/** Pure read of the strategy context — no randomness. */
 export function readStrategy(
   pitchType: PitchType,
   zone: ZoneId,
@@ -176,14 +174,8 @@ export function calculatePitchOutcome(
   balls: number,
   history: PitchRecord[] = [],
 ): PitchOutcome {
-  // Forgive meter misses OUTSIDE the perfect range: ease the raw accuracy so a
-  // moderately off-center needle still grades well for OUTCOME purposes only.
-  // The perfect-range bonus and the on-screen meter keep using the raw linear
-  // score, so this softens results without moving the perfect window.
   const acc = Math.pow(Math.max(0, accuracyScore), 0.6);
 
-  // Forgiving floors: only a badly mistimed meter (needle near the edge / power
-  // barely held) triggers an automatic ball or hit.
   if (acc < 0.20) return 'ball';
   if (powerScore < 0.06) return 'hit';
 
@@ -199,14 +191,11 @@ export function calculatePitchOutcome(
   if (zone === HEART_ZONE)    swingProb += 0.12;
   if (HIGH_ZONES.has(zone))   swingProb += 0.04;
   if (LOW_ZONES.has(zone))    swingProb -= 0.04;
-  // Pitches off the plate (outside the 3×3 zone) get taken — unless 2 strikes
-  // forces the hitter to protect and chase.
+  // Corner shadow zones (11-14) are off the plate — hitter takes unless 2 strikes.
   if (!STRIKE_ZONE.has(zone)) swingProb -= strikes === 2 ? 0.10 : 0.24;
   if (acc < 0.45) swingProb -= 0.10;
   if (acc > 0.80) swingProb += 0.06;
-  // A predictable hitter sits on the pitch and ambushes it.
   if (strat.predictable) swingProb += 0.08;
-  // Pitching backwards freezes the hitter — he's gearing up for a fastball.
   if (strat.backwards)   swingProb -= 0.08;
 
   swingProb = Math.max(0.05, Math.min(0.88, swingProb));
@@ -214,8 +203,6 @@ export function calculatePitchOutcome(
 
   if (didSwing) {
     let contactProb = 0.40;
-    // Power helps the pitcher induce whiffs across a wide band, not just at the
-    // exact sweet spot — so under/over-powering outside perfect is forgiven.
     contactProb -= Math.max(0, (0.45 - Math.abs(powerScore - 0.60))) * 0.18;
     contactProb -= acc * 0.14;
     if (pitchType === 'curveball' || pitchType === 'slider') contactProb -= 0.07 + stats.spin * 0.007;
@@ -225,17 +212,13 @@ export function calculatePitchOutcome(
     if (pitchType === 'cutter')    contactProb -= 0.05 + stats.spin * 0.004;
     if (strikes === 2) contactProb += 0.12;
     if (strikes === 0 && balls === 0) contactProb += 0.04;
-    // Location: the heart of the plate is hammered; edges and corners are safer.
     if (zone === HEART_ZONE)      contactProb += 0.10;
     if (EDGE_ZONES.has(zone))     contactProb -= 0.04;
-    // Chasing a pitch out of the zone is hard to square up.
     if (!STRIKE_ZONE.has(zone))   contactProb -= 0.10;
     if (strat.paintedCorner)      contactProb -= 0.08;
     if (strat.downAndAway)        contactProb -= 0.04;
-    // Deception bonuses make the hitter miss.
     if (strat.backwards) contactProb -= 0.10;
     if (strat.tunnel)    contactProb -= 0.10;
-    // Predictability lets the hitter barrel it up.
     if (strat.predictable) contactProb += 0.12;
     contactProb = Math.max(0.04, Math.min(0.74, contactProb));
 
@@ -244,14 +227,12 @@ export function calculatePitchOutcome(
     }
     return 'strike_swinging';
   } else {
-    // Took the pitch: only the inner 3×3 can be a called strike; off the plate
-    // (or a missed spot) is a ball.
     if (!STRIKE_ZONE.has(zone)) return 'ball';
     return acc > 0.45 ? 'strike_called' : 'ball';
   }
 }
 
-/** Awards flat strategy bonuses (post-multiplier) and the labels to surface. */
+/** Awards flat strategy bonuses and the labels to surface. */
 export function evaluateStrategyReward(
   strat: StrategyEval,
   outcome: PitchOutcome,
@@ -282,13 +263,14 @@ export function calculateSequenceMultiplier(history: PitchRecord[]): { multiplie
 
   const recent = history.slice(-5);
   const types = new Set(recent.map(p => p.type));
-  const getQuadrant = (z: ZoneId): string => {
-    const col = zCol(z); // 0 (inside) … 8 (outside)
-    const row = zRow(z); // 0 (top) … 8 (bottom)
-    if (col <= 3) return 'inside';
-    if (col >= 5) return 'outside';
-    return row <= 3 ? 'high' : 'low';
+
+  // Map each zone to one of 8 location buckets for diversity counting.
+  const QUAD: Partial<Record<ZoneId, string>> = {
+    11: 'hi-in',  1: 'hi-in',  2: 'hi-mid',  3: 'hi-out', 12: 'hi-out',
+                  4: 'md-in',  5: 'md-mid',  6: 'md-out',
+    13: 'lo-in',  7: 'lo-in',  8: 'lo-mid',  9: 'lo-out', 14: 'lo-out',
   };
+  const getQuadrant = (z: ZoneId) => QUAD[z] ?? 'md-mid';
   const locations = new Set(recent.map(p => getQuadrant(p.zone)));
 
   let multiplier = 1.0;
@@ -345,6 +327,5 @@ export function isPerfectPower(power: number): boolean {
 }
 
 export function isPerfectAccuracy(accuracy: number): boolean {
-  // Perfect band widened 25% (was >= 0.80) so perfect-zone pitches land more often.
   return accuracy >= 0.75;
 }

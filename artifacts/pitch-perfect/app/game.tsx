@@ -47,35 +47,33 @@ import { HotColdZones, getBatterAvgs } from '@/components/HotColdZones';
 // ─── Layout constants ────────────────────────────────────────────────────────
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const SCENE_H = Math.min(SCREEN_H * 0.52, 440);
-const ZONE_GRID = 9;
-const BASE_CELL_W = 24;
-const BASE_CELL_H = 21;
-// HUD card ends at ~149px (web) / ~120px (native) — push zone into visible area
-const HUD_APPROX = Platform.OS === 'web' ? 149 : 120;
-const VISIBLE_H = SCENE_H - HUD_APPROX;
+// MLB 13-zone: 3×3 inner strike zone + 4 corner shadow zones.
+// Larger base cells than the old 9×9 grid since we have far fewer zones.
+const BASE_CELL_W = 52;
+const BASE_CELL_H = 44;
 const BALL_FROM_X = SCREEN_W / 2;
 const BALL_FROM_Y = SCENE_H * 0.96;
 
-// 9-wide × 9-tall grid, numbered row-major 1…81.
-const zoneCol = (zone: ZoneId) => (zone - 1) % ZONE_GRID;        // 0 … 8
-const zoneRow = (zone: ZoneId) => Math.floor((zone - 1) / ZONE_GRID); // 0 … 8
-
-// Difficulty 0…1 → grid geometry. Easier = bigger zone, harder = smaller zone.
+// MLB 13-zone grid geometry.
 // The cell size MUST match what StrikeZone renders (passed as props) so the
 // ball-flight target stays aligned with the tapped cell.
 function zoneGeometry(difficulty: number) {
-  const scale = 1.25 - 0.47 * difficulty;          // 1.25 (easy) … 0.78 (hard)
-  const cellW = Math.round(BASE_CELL_W * scale);
-  const cellH = Math.round(BASE_CELL_H * scale);
-  const zoneW = cellW * ZONE_GRID;
+  const scale   = 1.25 - 0.47 * difficulty;       // 1.25 (easy) … 0.78 (hard)
+  const cellW   = Math.round(BASE_CELL_W * scale);
+  const cellH   = Math.round(BASE_CELL_H * scale);
+  // Corner shadow zones are 72% the width of an inner cell (matching StrikeZone).
+  const cornerW = Math.round(cellW * 0.72);
+  // Total container width: [corner][3 cells][corner]
+  const zoneW   = cornerW * 2 + cellW * 3;
   const zoneLeft = (SCREEN_W - zoneW) / 2;
-  const gridH = cellH * ZONE_GRID;
-  // Clamp so the grid never clips off the bottom of the (overflow:hidden) scene:
-  // cap the top so the bottom stays on-screen, then floor it at 8px.
-  const topDesired = HUD_APPROX + VISIBLE_H * 0.30;
-  const topMax = Math.max(8, SCENE_H - gridH - 8);
-  const zoneTop = Math.max(8, Math.min(topDesired, topMax));
-  return { cellW, cellH, zoneW, zoneLeft, zoneTop };
+  // szLeft = where the inner 3×3 strike-zone starts horizontally.
+  const szLeft  = zoneLeft + cornerW;
+  // Vertical: target the plate/batter-torso area in the pitcher's-POV scene.
+  const gridH   = cellH * 3;
+  const topDesired = SCENE_H * 0.40;
+  const topMax  = Math.max(8, SCENE_H - gridH - 8);
+  const szTop   = Math.max(8, Math.min(topDesired, topMax));
+  return { cellW, cellH, cornerW, zoneW, zoneLeft, szLeft, szTop };
 }
 
 export default function GameScreen() {
@@ -150,16 +148,27 @@ export default function GameScreen() {
   const powerCycleDuration    = (820 + profile.stats.stamina * 90) * diffSpeedMult * meterSlowdown;
   const accuracyCycleDuration = (600 + profile.stats.accuracy * 100) * diffSpeedMult * meterSlowdown;
 
-  const { cellW, cellH, zoneW, zoneLeft, zoneTop } = useMemo(
+  const { cellW, cellH, cornerW, zoneW, zoneLeft, szLeft, szTop } = useMemo(
     () => zoneGeometry(settings.difficulty),
     [settings.difficulty],
   );
 
-  function getZoneCenter(zone: ZoneId) {
-    return {
-      x: zoneLeft + zoneCol(zone) * cellW + cellW / 2,
-      y: zoneTop  + zoneRow(zone) * cellH + cellH / 2,
-    };
+  function getZoneCenter(zone: ZoneId): { x: number; y: number } {
+    // Zones 1-9: inner 3×3 strike zone (row-major, left→right, top→bottom)
+    if (zone >= 1 && zone <= 9) {
+      const col = (zone - 1) % 3;
+      const row = Math.floor((zone - 1) / 3);
+      return {
+        x: szLeft + col * cellW + cellW / 2,
+        y: szTop  + row * cellH + cellH / 2,
+      };
+    }
+    // Zones 11-14: corner shadow zones (outside the 3×3)
+    if (zone === 11) return { x: szLeft - cornerW / 2,             y: szTop + cellH / 2 };
+    if (zone === 12) return { x: szLeft + 3 * cellW + cornerW / 2, y: szTop + cellH / 2 };
+    if (zone === 13) return { x: szLeft - cornerW / 2,             y: szTop + 2.5 * cellH };
+    if (zone === 14) return { x: szLeft + 3 * cellW + cornerW / 2, y: szTop + 2.5 * cellH };
+    return { x: SCREEN_W / 2, y: szTop + cellH * 1.5 };
   }
 
   useEffect(() => () => {
@@ -436,7 +445,7 @@ export default function GameScreen() {
         <View style={[
           styles.zoneOverlay,
           {
-            top: zoneTop,
+            top: szTop,
             left: zoneLeft,
             width: zoneW,
             opacity: phase === 'result' ? 0.35 : 1,
