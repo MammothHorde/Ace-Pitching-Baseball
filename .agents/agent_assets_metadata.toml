@@ -30,6 +30,12 @@ uri = "file://artifacts/pitch-perfect/assets/images/batter_3.png"
 type = "image"
 title = "batter 3 pitchers perspective"
 
+[[generated]]
+id = "lh2_qNrLSaU20XbOmNnx1"
+uri = "file://artifacts/pitch-perfect/assets/images/splash.png"
+type = "image"
+title = "the closer splash screen"
+
 [[outputs]]
 id = "x07VhkfH3oS9cBXWD0mp1"
 uri = "file://attached_assets/generated_audio/sound_effect_pp_throw.mp3"
