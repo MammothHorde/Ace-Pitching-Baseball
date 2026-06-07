@@ -154,9 +154,11 @@ const styles = StyleSheet.create({
   logoBlock: { alignItems: 'center' },
   title: {
     fontSize: 54, fontWeight: '900', color: '#FFFFFF', letterSpacing: 4, lineHeight: 58,
+    textAlign: 'center',
   },
   titleAccent: {
     fontSize: 54, fontWeight: '900', color: '#FF4757', letterSpacing: 4, marginTop: -6,
+    textAlign: 'center',
   },
   tagline: { color: 'rgba(255,255,255,0.55)', fontSize: 15, fontWeight: '600', marginTop: 8 },
   card: {
