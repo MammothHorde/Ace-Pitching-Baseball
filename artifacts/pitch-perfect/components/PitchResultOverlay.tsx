@@ -39,7 +39,12 @@ export function PitchResultOverlay({ result, visible }: Props) {
     <Animated.View style={[styles.overlay, { opacity }]}>
       <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
         <Text style={[styles.big, { color: cfg.color }]}>{cfg.label}</Text>
-        <Text style={styles.sub}>{cfg.sub}</Text>
+        <View style={styles.subRow}>
+          <Text style={styles.sub}>{cfg.sub}</Text>
+          {result.pitchSpeedMph > 0 && (
+            <Text style={styles.speed}>{result.pitchSpeedMph} mph</Text>
+          )}
+        </View>
 
         {result.isKO && (
           <View style={[styles.badge, { backgroundColor: cfg.color }]}>
@@ -115,7 +120,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.12)',
   },
   big:      { fontSize: 52, fontWeight: '900', letterSpacing: 2 },
-  sub:      { color: 'rgba(255,255,255,0.55)', fontSize: 14, marginTop: 2, fontWeight: '600' },
+  subRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  sub:      { color: 'rgba(255,255,255,0.55)', fontSize: 14, fontWeight: '600' },
+  speed:    { color: 'rgba(255,255,255,0.35)', fontSize: 13, fontWeight: '600' },
   badge:    { marginTop: 10, paddingHorizontal: 14, paddingVertical: 5, borderRadius: 20 },
   badgeTxt: { color: '#0B1E3D', fontSize: 13, fontWeight: '900', letterSpacing: 0.3 },
   ptsRow:   { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 },
