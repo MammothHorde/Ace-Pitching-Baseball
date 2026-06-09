@@ -11,6 +11,8 @@ interface GameHUDProps {
   strikes: number;
   balls: number;
   sequenceMultiplier: number;
+  runners?: [boolean, boolean, boolean];
+  lead?: number;
 }
 
 function SmallDot({ filled, color }: { filled: boolean; color: string }) {
@@ -25,9 +27,90 @@ function SmallDot({ filled, color }: { filled: boolean; color: string }) {
   );
 }
 
-export function GameHUD({ score, inning, outs, strikes, balls, sequenceMultiplier }: GameHUDProps) {
+function BaseDot({ occupied }: { occupied: boolean }) {
+  return (
+    <View style={[
+      diamondStyles.baseDot,
+      occupied ? diamondStyles.baseDotOn : diamondStyles.baseDotOff,
+    ]} />
+  );
+}
+
+function BaseDiamond({ runners, lead }: { runners: [boolean, boolean, boolean]; lead: number }) {
+  const [on1, on2, on3] = runners;
+  return (
+    <View style={diamondStyles.wrapper}>
+      <View style={diamondStyles.diamond}>
+        {/* 2nd base — top */}
+        <View style={diamondStyles.secondPos}>
+          <BaseDot occupied={on2} />
+        </View>
+        {/* Middle row: 3rd left, home (empty indicator) center, 1st right */}
+        <View style={diamondStyles.midRow}>
+          <View style={diamondStyles.thirdPos}>
+            <BaseDot occupied={on3} />
+          </View>
+          <View style={diamondStyles.homeIndicator} />
+          <View style={diamondStyles.firstPos}>
+            <BaseDot occupied={on1} />
+          </View>
+        </View>
+      </View>
+      <Text style={diamondStyles.leadText}>+{Math.max(0, lead)}</Text>
+    </View>
+  );
+}
+
+const diamondStyles = StyleSheet.create({
+  wrapper: { alignItems: 'center', gap: 2 },
+  diamond: { width: 44, height: 36, alignItems: 'center', justifyContent: 'center' },
+  secondPos: { alignItems: 'center', marginBottom: 2 },
+  midRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: 40,
+  },
+  thirdPos: {},
+  firstPos: {},
+  homeIndicator: {
+    width: 7, height: 7, borderRadius: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    transform: [{ rotate: '45deg' }],
+  },
+  baseDot: {
+    width: 10, height: 10,
+    transform: [{ rotate: '45deg' }],
+    borderWidth: 1,
+  },
+  baseDotOn: {
+    backgroundColor: '#FFAA00',
+    borderColor: '#FFD060',
+    shadowColor: '#FFAA00',
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  baseDotOff: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  leadText: {
+    color: '#4CD964',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+});
+
+export function GameHUD({
+  score, inning, outs, strikes, balls, sequenceMultiplier, runners, lead,
+}: GameHUDProps) {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === 'web' ? 67 : insets.top;
+  const isCloser = runners !== undefined && lead !== undefined;
 
   return (
     <View style={[styles.container, { paddingTop: topPad + 6 }]}>
@@ -43,21 +126,34 @@ export function GameHUD({ score, inning, outs, strikes, balls, sequenceMultiplie
         </View>
 
         <View style={styles.centerBlock}>
-          <View style={styles.dotsRow}>
-            <SmallDot filled={outs >= 1} color="#FFCC00" />
-            <SmallDot filled={outs >= 2} color="#FFCC00" />
-            <SmallDot filled={outs >= 3} color="#FFCC00" />
-          </View>
-          <Text style={styles.outsLabel}>OUTS</Text>
+          {isCloser ? (
+            <BaseDiamond runners={runners} lead={lead} />
+          ) : (
+            <>
+              <View style={styles.dotsRow}>
+                <SmallDot filled={outs >= 1} color="#FFCC00" />
+                <SmallDot filled={outs >= 2} color="#FFCC00" />
+                <SmallDot filled={outs >= 3} color="#FFCC00" />
+              </View>
+              <Text style={styles.outsLabel}>OUTS</Text>
+            </>
+          )}
         </View>
 
         <View style={styles.rightBlock}>
+          {isCloser && (
+            <View style={styles.dotsRowRight}>
+              <SmallDot filled={outs >= 1} color="#FFCC00" />
+              <SmallDot filled={outs >= 2} color="#FFCC00" />
+              <SmallDot filled={outs >= 3} color="#FFCC00" />
+            </View>
+          )}
           <View style={styles.countPill}>
             <Text style={styles.countBalls}>{balls}</Text>
             <Text style={styles.countSep}>-</Text>
             <Text style={styles.countStrikes}>{strikes}</Text>
           </View>
-          <Text style={styles.label}>B - S</Text>
+          {!isCloser && <Text style={styles.label}>B - S</Text>}
           <TouchableOpacity onPress={() => router.back()} style={styles.exitBtn}>
             <MaterialCommunityIcons name="close-circle" size={18} color="rgba(255,255,255,0.4)" />
           </TouchableOpacity>
@@ -101,6 +197,7 @@ const styles = StyleSheet.create({
   centerBlock: { flex: 1, alignItems: 'center' },
   inningText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900', letterSpacing: 0.5 },
   dotsRow: { flexDirection: 'row', marginTop: 4 },
+  dotsRowRight: { flexDirection: 'row', marginBottom: 2 },
   outsLabel: { color: 'rgba(255,255,255,0.35)', fontSize: 7, fontWeight: '700', letterSpacing: 1, marginTop: 2 },
   rightBlock: { flex: 1, alignItems: 'flex-end', gap: 2 },
   countPill: {

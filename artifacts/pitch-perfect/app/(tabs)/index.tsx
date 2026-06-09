@@ -92,21 +92,41 @@ export default function HomeScreen() {
           </View>
         )}
 
-        <TouchableOpacity
-          style={styles.playBtn}
-          onPress={() => { playSfx('tap'); router.push('/game'); }}
-          activeOpacity={0.85}
-        >
-          <LinearGradient
-            colors={['#FF6B6B', '#FF4757']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.playBtnGrad}
+        <View style={styles.modeRow}>
+          <TouchableOpacity
+            style={styles.modeBtn}
+            onPress={() => { playSfx('tap'); router.push({ pathname: '/game', params: { mode: 'classic' } }); }}
+            activeOpacity={0.85}
           >
-            <MaterialCommunityIcons name="baseball" size={28} color="#fff" />
-            <Text style={styles.playBtnText}>PLAY BALL</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+            <LinearGradient
+              colors={['#FF6B6B', '#FF4757']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.modeBtnGrad}
+            >
+              <MaterialCommunityIcons name="baseball" size={26} color="#fff" />
+              <Text style={styles.modeBtnText}>CLASSIC</Text>
+              <Text style={styles.modeBtnSub}>3 outs · chase score</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.modeBtn}
+            onPress={() => { playSfx('tap'); router.push({ pathname: '/game', params: { mode: 'closer' } }); }}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#1A3A6B', '#0F2547']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.modeBtnGrad, styles.modeBtnGradCloser]}
+            >
+              <MaterialCommunityIcons name="fire" size={26} color="#5AC8FA" />
+              <Text style={[styles.modeBtnText, styles.modeBtnTextCloser]}>CLOSER</Text>
+              <Text style={[styles.modeBtnSub, styles.modeBtnSubCloser]}>save the game</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
           style={styles.upgradeBtn}
@@ -177,12 +197,20 @@ const styles = StyleSheet.create({
   statKey: { color: 'rgba(255,255,255,0.4)', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
   statVal: { color: '#FFFFFF', fontSize: 20, fontWeight: '900' },
   arsenalText: { color: 'rgba(255,255,255,0.35)', fontSize: 11, textAlign: 'center', marginTop: 10 },
-  playBtn: { width: '100%', borderRadius: 22, overflow: 'hidden' },
-  playBtnGrad: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 22, gap: 12,
+  modeRow: { flexDirection: 'row', width: '100%', gap: 10 },
+  modeBtn: { flex: 1, borderRadius: 20, overflow: 'hidden' },
+  modeBtnGrad: {
+    alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 20, paddingHorizontal: 10, gap: 4,
   },
-  playBtnText: { color: '#fff', fontSize: 24, fontWeight: '900', letterSpacing: 2 },
+  modeBtnGradCloser: {
+    borderWidth: 1,
+    borderColor: 'rgba(90,200,250,0.25)',
+  },
+  modeBtnText: { color: '#fff', fontSize: 20, fontWeight: '900', letterSpacing: 1.5 },
+  modeBtnTextCloser: { color: '#5AC8FA' },
+  modeBtnSub: { color: 'rgba(255,255,255,0.55)', fontSize: 10, fontWeight: '600', letterSpacing: 0.5 },
+  modeBtnSubCloser: { color: 'rgba(90,200,250,0.6)' },
   upgradeBtn: {
     width: '100%',
     flexDirection: 'row',

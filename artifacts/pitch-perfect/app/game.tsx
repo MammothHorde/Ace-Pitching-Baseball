@@ -5,21 +5,27 @@ import {
   Platform,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 
 import {
+  CloserScenario,
+  GameMode,
   GamePhase,
   PitchOutcome,
   PitchRecord,
   PitchResult,
   PitchType,
+  SaveResult,
   ZoneId,
 } from '@/constants/GameTypes';
+import { pickScenario } from '@/constants/CloserScenarios';
 import {
+  advanceRunners,
   calculatePitchOutcome,
   calculatePoints,
   calculateSequenceMultiplier,
@@ -80,6 +86,9 @@ export default function GameScreen() {
   const insets = useSafeAreaInsets();
   const { profile, recordGameResult, settings } = usePitcher();
   const { playSfx, playSfxIn } = useAudio();
+  const { mode: modeParam } = useLocalSearchParams<{ mode?: string }>();
+
+  const gameMode: GameMode = modeParam === 'closer' ? 'closer' : 'classic';
 
   const [phase, setPhase]                       = useState<GamePhase>('selecting');
   const [inning, setInning]                     = useState(1);
@@ -100,6 +109,15 @@ export default function GameScreen() {
   const [powerLevel, setPowerLevel]             = useState(0);
   const [accuracyPos, setAccuracyPos]           = useState(0.5);
 
+  // Closer mode state
+  const closerScenarioRef                       = useRef<CloserScenario | null>(null);
+  const [runners, setRunners]                   = useState<[boolean, boolean, boolean]>([false, false, false]);
+  const [lead, setLead]                         = useState(0);
+  const [showIntroCard, setShowIntroCard]       = useState(false);
+  const runnersRef                              = useRef<[boolean, boolean, boolean]>([false, false, false]);
+  const leadRef                                 = useRef(0);
+  const gameModeRef                             = useRef<GameMode>(gameMode);
+
   // Stale-closure-safe refs
   const phaseRef           = useRef<GamePhase>('selecting');
   const selectedZoneRef    = useRef<ZoneId | null>(null);
@@ -113,6 +131,7 @@ export default function GameScreen() {
   const resultTimeoutRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ballFlightRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inningBreakRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const introCardRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const powerStartTimeRef    = useRef(0);
   const accuracyStartTimeRef = useRef(0);
   const powerIntervalRef     = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -171,10 +190,34 @@ export default function GameScreen() {
     return { x: SCREEN_W / 2, y: szTop + cellH * 1.5 };
   }
 
+  // Closer mode initialization — pick scenario once on mount
+  useEffect(() => {
+    if (gameMode === 'closer') {
+      const scenario = pickScenario();
+      closerScenarioRef.current = scenario;
+      inningRef.current = scenario.inning;
+      setInning(scenario.inning);
+      outsRef.current = scenario.startingOuts;
+      setOuts(scenario.startingOuts);
+      setBatterIndex(scenario.startingOuts % 3);
+      runnersRef.current = [...scenario.runners] as [boolean, boolean, boolean];
+      setRunners([...scenario.runners] as [boolean, boolean, boolean]);
+      leadRef.current = scenario.leadRuns;
+      setLead(scenario.leadRuns);
+      gameModeRef.current = 'closer';
+      setShowIntroCard(true);
+      introCardRef.current = setTimeout(() => setShowIntroCard(false), 2500);
+    } else {
+      gameModeRef.current = 'classic';
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => () => {
     if (resultTimeoutRef.current)   clearTimeout(resultTimeoutRef.current);
     if (ballFlightRef.current)      clearTimeout(ballFlightRef.current);
     if (inningBreakRef.current)     clearTimeout(inningBreakRef.current);
+    if (introCardRef.current)       clearTimeout(introCardRef.current);
     if (powerIntervalRef.current)   clearInterval(powerIntervalRef.current);
     if (accuracyIntervalRef.current) clearInterval(accuracyIntervalRef.current);
   }, []);
@@ -382,18 +425,69 @@ export default function GameScreen() {
     else if (newBalls >= 4)             { batterRetired = true; }
     else if (outcome === 'hit')         { batterRetired = true; }
 
+    // ── Closer mode: advance runners & check blown save ──────────────────────
+    // Only advance on actual run-scoring events: a hit, or a walk (4th ball).
+    // Balls 1–3 do NOT move runners.
+    const isWalk = outcome === 'ball' && newBalls >= 4;
+    if (gameModeRef.current === 'closer' && (outcome === 'hit' || isWalk)) {
+      const { runners: newRunners, lead: newLead, blownSave } = advanceRunners(
+        runnersRef.current, outcome, leadRef.current,
+      );
+      runnersRef.current = newRunners;
+      leadRef.current    = newLead;
+      setRunners(newRunners);
+      setLead(newLead);
+
+      if (blownSave) {
+        recordGameResult(finalScore);
+        const scenario = closerScenarioRef.current;
+        router.replace({
+          pathname: '/results',
+          params: {
+            score: String(finalScore),
+            saveResult: 'blown_save',
+            scenarioLabel: scenario?.label ?? '',
+            gameMode: 'closer',
+          },
+        });
+        return;
+      }
+    }
+
     if (batterRetired) {
       strikesRef.current = 0; setStrikes(0);
       ballsRef.current   = 0; setBalls(0);
+
+      // In Closer mode, after a hit/walk the batter has been placed — clear runners only on out
       if (isOut) {
         outsRef.current = currentOuts; setOuts(currentOuts);
         setBatterIndex(currentOuts % 3);
+        // On strikeout in Closer mode, batter is out but runners already handled above
       }
 
       if (currentOuts >= 3 && isOut) {
+        if (gameModeRef.current === 'closer') {
+          // 3 outs — successful save/hold
+          const scenario = closerScenarioRef.current;
+          const saveResult: SaveResult = scenario?.inning === 9 ? 'save' : 'hold';
+          recordGameResult(finalScore);
+          router.replace({
+            pathname: '/results',
+            params: {
+              score: String(finalScore),
+              saveResult,
+              scenarioLabel: scenario?.label ?? '',
+              gameMode: 'closer',
+            },
+          });
+          return;
+        }
         if (inningRef.current >= 1) {
           recordGameResult(finalScore);
-          router.replace({ pathname: '/results', params: { score: String(finalScore) } });
+          router.replace({
+            pathname: '/results',
+            params: { score: String(finalScore), gameMode: 'classic' },
+          });
           return;
         } else {
           setJustFinished(inningRef.current);
@@ -486,6 +580,8 @@ export default function GameScreen() {
         strikes={strikes}
         balls={balls}
         sequenceMultiplier={seqMult}
+        runners={gameMode === 'closer' ? runners : undefined}
+        lead={gameMode === 'closer' ? lead : undefined}
       />
 
       {/* ── BOTTOM PANEL ─────────────────────────────────── */}
@@ -560,6 +656,35 @@ export default function GameScreen() {
       {/* ── OVERLAYS ─────────────────────────────────────── */}
       {lastResult && <PitchResultOverlay result={lastResult} visible={showResult} />}
 
+      {/* Closer mode intro card */}
+      {showIntroCard && closerScenarioRef.current && (
+        <TouchableOpacity
+          style={styles.introOverlay}
+          onPress={() => {
+            if (introCardRef.current) clearTimeout(introCardRef.current);
+            setShowIntroCard(false);
+          }}
+          activeOpacity={1}
+        >
+          <View style={styles.introCard}>
+            <Text style={styles.introMode}>CLOSER MODE</Text>
+            <Text style={styles.introPressure}>{closerScenarioRef.current.pressureLabel}</Text>
+            <View style={styles.introSituationBox}>
+              <Text style={styles.introInning}>
+                {closerScenarioRef.current.inning === 9 ? '9th Inning' : '8th Inning'}
+              </Text>
+              <Text style={styles.introDetail}>
+                {closerScenarioRef.current.leadRuns}-run lead
+              </Text>
+              <Text style={styles.introDetail}>
+                {closerScenarioRef.current.startingOuts} outs
+              </Text>
+            </View>
+            <Text style={styles.introDesc}>{closerScenarioRef.current.description}</Text>
+            <Text style={styles.introTap}>Tap to start</Text>
+          </View>
+        </TouchableOpacity>
+      )}
 
       {showInningBreak && (
         <View style={styles.inningOverlay}>
@@ -650,6 +775,61 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.30)',
     fontSize: 13,
     fontWeight: '600',
+  },
+
+  // Closer intro card
+  introOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(5,15,40,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 90,
+    paddingHorizontal: 28,
+  },
+  introCard: {
+    width: '100%',
+    backgroundColor: 'rgba(15,37,71,0.98)',
+    borderRadius: 28,
+    padding: 28,
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: 'rgba(90,200,250,0.35)',
+  },
+  introMode: {
+    color: '#5AC8FA', fontSize: 11, fontWeight: '900',
+    letterSpacing: 3, textTransform: 'uppercase',
+  },
+  introPressure: {
+    color: '#FFFFFF', fontSize: 22, fontWeight: '900',
+    letterSpacing: 1, textAlign: 'center', lineHeight: 28,
+  },
+  introSituationBox: {
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: 'rgba(90,200,250,0.08)',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(90,200,250,0.2)',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginVertical: 4,
+  },
+  introInning: {
+    color: '#FFCC00', fontSize: 14, fontWeight: '800',
+  },
+  introDetail: {
+    color: 'rgba(255,255,255,0.65)', fontSize: 14, fontWeight: '600',
+  },
+  introDesc: {
+    color: 'rgba(255,255,255,0.5)', fontSize: 13, textAlign: 'center',
+    lineHeight: 19, fontWeight: '500',
+  },
+  introTap: {
+    color: 'rgba(90,200,250,0.5)', fontSize: 11, fontWeight: '700',
+    letterSpacing: 1, marginTop: 4,
   },
 
   // Inning break overlay

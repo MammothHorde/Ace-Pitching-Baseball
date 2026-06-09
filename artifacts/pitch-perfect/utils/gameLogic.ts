@@ -329,3 +329,53 @@ export function isPerfectPower(power: number): boolean {
 export function isPerfectAccuracy(accuracy: number): boolean {
   return accuracy >= 0.75;
 }
+
+export type RunnerAdvanceOutcome = {
+  runners: [boolean, boolean, boolean];
+  lead: number;
+  blownSave: boolean;
+};
+
+/**
+ * Advances baserunners in Closer mode based on pitch outcome.
+ * Single model: each runner shifts +1 base; runners scoring from 3rd reduce the lead.
+ * Walk: force-advances all occupied bases, adds runner to 1st.
+ * Strikeout/foul/called-strike: no runner movement.
+ */
+export function advanceRunners(
+  runners: [boolean, boolean, boolean],
+  outcome: PitchOutcome,
+  lead: number,
+): RunnerAdvanceOutcome {
+  if (outcome === 'strike_called' || outcome === 'strike_swinging' || outcome === 'foul') {
+    return { runners: [...runners] as [boolean, boolean, boolean], lead, blownSave: false };
+  }
+
+  const [on1, on2, on3] = runners;
+  let newLead = lead;
+
+  if (outcome === 'ball') {
+    // Walk: force-advance only through occupied chain
+    // Batter goes to 1st; each occupied base advances if forced
+    const force2 = on1;          // runner on 1st forced to 2nd
+    const force3 = on1 && on2;   // runner on 2nd forced to 3rd (only if 1st also occupied)
+    const scores  = on1 && on2 && on3; // runner on 3rd scores (only if bases loaded)
+    if (scores) newLead = lead - 1;
+    const r1 = true;
+    const r2 = force2 ? true : on2;
+    const r3 = force3 ? true : on3;
+    return { runners: [r1, r2, r3], lead: newLead, blownSave: newLead <= 0 };
+  }
+
+  if (outcome === 'hit') {
+    // Single: all runners advance one base; runner from 3rd scores
+    if (on3) newLead = lead - 1;
+    const r1 = true;   // batter reaches 1st
+    const r2 = on1;    // old 1st advances to 2nd
+    const r3 = on2;    // old 2nd advances to 3rd
+    // old 3rd scores (handled above)
+    return { runners: [r1, r2, r3], lead: newLead, blownSave: newLead <= 0 };
+  }
+
+  return { runners: [...runners] as [boolean, boolean, boolean], lead, blownSave: false };
+}

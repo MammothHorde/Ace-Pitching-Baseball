@@ -13,16 +13,32 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { usePitcher } from '@/context/PitcherContext';
+import { SaveResult } from '@/constants/GameTypes';
 
 export default function ResultsScreen() {
   const insets = useSafeAreaInsets();
-  const { score: scoreParam } = useLocalSearchParams<{ score: string }>();
+  const {
+    score: scoreParam,
+    saveResult: saveResultParam,
+    scenarioLabel: scenarioLabelParam,
+    gameMode: gameModeParam,
+  } = useLocalSearchParams<{
+    score: string;
+    saveResult?: string;
+    scenarioLabel?: string;
+    gameMode?: string;
+  }>();
+
   const finalScore = parseInt(scoreParam ?? '0', 10);
   const { profile } = usePitcher();
   const isNewHigh = finalScore > 0 && finalScore >= profile.highScore;
+  const isCloser = gameModeParam === 'closer';
+  const saveResult = (saveResultParam ?? 'none') as SaveResult;
+  const scenarioLabel = scenarioLabelParam ?? '';
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const badgeScaleAnim = useRef(new Animated.Value(0)).current;
 
   const topPad = Platform.OS === 'web' ? 67 : insets.top;
   const bottomPad = Platform.OS === 'web' ? 34 : insets.bottom;
@@ -34,7 +50,39 @@ export default function ResultsScreen() {
         toValue: 1, useNativeDriver: true, tension: 80, friction: 8,
       }),
     ]).start();
+    if (isCloser) {
+      Animated.spring(badgeScaleAnim, {
+        toValue: 1, useNativeDriver: true, tension: 60, friction: 7, delay: 300,
+      }).start();
+    }
   }, []);
+
+  const BADGE_CONFIG = {
+    save: {
+      label: 'SAVE',
+      icon: 'shield-check' as const,
+      colors: ['#1B6B2E', '#28A745'] as [string, string],
+      borderColor: 'rgba(40,167,69,0.5)',
+      textColor: '#4CD964',
+    },
+    hold: {
+      label: 'HOLD',
+      icon: 'lock' as const,
+      colors: ['#1A3A6B', '#2563EB'] as [string, string],
+      borderColor: 'rgba(37,99,235,0.5)',
+      textColor: '#5AC8FA',
+    },
+    blown_save: {
+      label: 'BLOWN SAVE',
+      icon: 'fire' as const,
+      colors: ['#6B1A1A', '#DC2626'] as [string, string],
+      borderColor: 'rgba(220,38,38,0.5)',
+      textColor: '#FF4757',
+    },
+    none: null,
+  };
+
+  const badgeCfg = isCloser ? BADGE_CONFIG[saveResult] : null;
 
   return (
     <View style={styles.container}>
@@ -55,8 +103,35 @@ export default function ResultsScreen() {
         ]}
       >
         <Animated.View style={[styles.topSection, { transform: [{ scale: scaleAnim }] }]}>
-          <MaterialCommunityIcons name="baseball" size={56} color="#FF4757" />
-          <Text style={styles.gameOver}>GAME OVER</Text>
+          <MaterialCommunityIcons
+            name={isCloser ? 'fire' : 'baseball'}
+            size={56}
+            color={isCloser ? (saveResult === 'blown_save' ? '#FF4757' : '#5AC8FA') : '#FF4757'}
+          />
+          <Text style={styles.gameOver}>{isCloser ? (saveResult === 'blown_save' ? 'BLOWN SAVE' : 'GAME OVER') : 'GAME OVER'}</Text>
+
+          {/* Save/Hold/Blown Save badge for Closer mode */}
+          {badgeCfg && (
+            <Animated.View style={[
+              styles.saveBadgeWrap,
+              { transform: [{ scale: badgeScaleAnim }] },
+            ]}>
+              <LinearGradient
+                colors={badgeCfg.colors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.saveBadge, { borderColor: badgeCfg.borderColor }]}
+              >
+                <MaterialCommunityIcons name={badgeCfg.icon} size={22} color={badgeCfg.textColor} />
+                <Text style={[styles.saveBadgeText, { color: badgeCfg.textColor }]}>
+                  {badgeCfg.label}
+                </Text>
+              </LinearGradient>
+              {scenarioLabel ? (
+                <Text style={styles.scenarioLabel}>{scenarioLabel}</Text>
+              ) : null}
+            </Animated.View>
+          )}
 
           {isNewHigh && (
             <View style={styles.newHighBadge}>
@@ -88,17 +163,26 @@ export default function ResultsScreen() {
         <View style={styles.btnSection}>
           <TouchableOpacity
             style={styles.playAgainBtn}
-            onPress={() => router.replace('/game')}
+            onPress={() => router.replace({
+              pathname: '/game',
+              params: isCloser ? { mode: 'closer' } : { mode: 'classic' },
+            })}
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={['#FF6B6B', '#FF4757']}
+              colors={isCloser ? ['#1A3A6B', '#0F2547'] : ['#FF6B6B', '#FF4757']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.btnGrad}
             >
-              <MaterialCommunityIcons name="baseball" size={22} color="#fff" />
-              <Text style={styles.btnText}>PLAY AGAIN</Text>
+              <MaterialCommunityIcons
+                name={isCloser ? 'fire' : 'baseball'}
+                size={22}
+                color={isCloser ? '#5AC8FA' : '#fff'}
+              />
+              <Text style={[styles.btnText, isCloser && { color: '#5AC8FA' }]}>
+                {isCloser ? 'NEW SAVE SITUATION' : 'PLAY AGAIN'}
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
 
@@ -129,6 +213,23 @@ const styles = StyleSheet.create({
   content: { flex: 1, paddingHorizontal: 24, justifyContent: 'space-between' },
   topSection: { alignItems: 'center', gap: 10 },
   gameOver: { color: '#FFFFFF', fontSize: 38, fontWeight: '900', letterSpacing: 3 },
+  saveBadgeWrap: { alignItems: 'center', gap: 4 },
+  saveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 22,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderWidth: 1.5,
+  },
+  saveBadgeText: { fontSize: 22, fontWeight: '900', letterSpacing: 2 },
+  scenarioLabel: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
   newHighBadge: {
     backgroundColor: 'rgba(255,204,0,0.2)',
     borderRadius: 20,

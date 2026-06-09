@@ -1,5 +1,20 @@
 export type PitchType = 'fastball' | 'curveball' | 'slider' | 'changeup' | 'splitter' | 'cutter';
 
+export type GameMode = 'classic' | 'closer';
+export type SaveResult = 'save' | 'hold' | 'blown_save' | 'none';
+
+export interface CloserScenario {
+  id: string;
+  label: string;
+  pressureLabel: string;
+  inning: 8 | 9;
+  leadRuns: number;
+  startingOuts: 0 | 1 | 2;
+  runners: [boolean, boolean, boolean];
+  description: string;
+  weight: number;
+}
+
 // MLB 13-zone system:
 //   Inner 3×3 strike zone — zones 1-9 (left→right, top→bottom):
 //     1  2  3
