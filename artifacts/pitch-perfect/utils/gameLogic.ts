@@ -330,6 +330,30 @@ export function isPerfectAccuracy(accuracy: number): boolean {
   return accuracy >= 0.75;
 }
 
+const PITCH_SPEED_RANGES: Record<PitchType, { base: number; range: number }> = {
+  fastball:  { base: 86, range: 16 },
+  cutter:    { base: 82, range: 12 },
+  slider:    { base: 78, range: 12 },
+  splitter:  { base: 80, range: 10 },
+  changeup:  { base: 72, range: 12 },
+  curveball: { base: 68, range: 14 },
+};
+
+/**
+ * Returns a realistic pitch speed in mph.
+ * Power score (0–1) drives 60 % of the range; the pitcher's speed stat (1–10) drives 40 %.
+ */
+export function calculatePitchSpeed(
+  pitchType: PitchType,
+  powerScore: number,
+  speedStat: number,
+): number {
+  const { base, range } = PITCH_SPEED_RANGES[pitchType];
+  const statFactor  = (Math.max(1, Math.min(10, speedStat)) - 1) / 9;
+  const mph = base + range * (powerScore * 0.6 + statFactor * 0.4);
+  return Math.round(mph);
+}
+
 export type RunnerAdvanceOutcome = {
   runners: [boolean, boolean, boolean];
   lead: number;

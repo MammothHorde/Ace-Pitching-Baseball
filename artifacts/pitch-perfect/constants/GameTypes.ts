@@ -104,4 +104,5 @@ export interface PitchResult {
   sequenceLabel: string;
   strategyLabels: string[];
   isPayoffPitch: boolean;
+  pitchSpeedMph: number;
 }

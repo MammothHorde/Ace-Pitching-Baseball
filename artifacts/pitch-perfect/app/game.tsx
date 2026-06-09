@@ -27,6 +27,7 @@ import { pickScenario } from '@/constants/CloserScenarios';
 import {
   advanceRunners,
   calculatePitchOutcome,
+  calculatePitchSpeed,
   calculatePoints,
   calculateSequenceMultiplier,
   evaluateStrategyReward,
@@ -46,6 +47,7 @@ import { AccuracyMeter } from '@/components/AccuracyMeter';
 import { PitchTypeSelector } from '@/components/PitchTypeSelector';
 import { GameHUD } from '@/components/GameHUD';
 import { PitchResultOverlay } from '@/components/PitchResultOverlay';
+import { SpeedBanner } from '@/components/SpeedBanner';
 import { SequenceBonus } from '@/components/SequenceBonus';
 import { CountBanner } from '@/components/CountBanner';
 import { HotColdZones, getBatterAvgs } from '@/components/HotColdZones';
@@ -108,6 +110,10 @@ export default function GameScreen() {
   const [batterIndex, setBatterIndex]           = useState(0);
   const [powerLevel, setPowerLevel]             = useState(0);
   const [accuracyPos, setAccuracyPos]           = useState(0.5);
+  const [showSpeedBanner, setShowSpeedBanner]   = useState(false);
+  const [speedBannerMph, setSpeedBannerMph]     = useState(0);
+  const [speedBannerPitch, setSpeedBannerPitch] = useState<PitchType>('fastball');
+  const speedBannerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Closer mode state
   const closerScenarioRef                       = useRef<CloserScenario | null>(null);
@@ -214,11 +220,12 @@ export default function GameScreen() {
   }, []);
 
   useEffect(() => () => {
-    if (resultTimeoutRef.current)   clearTimeout(resultTimeoutRef.current);
-    if (ballFlightRef.current)      clearTimeout(ballFlightRef.current);
-    if (inningBreakRef.current)     clearTimeout(inningBreakRef.current);
-    if (introCardRef.current)       clearTimeout(introCardRef.current);
-    if (powerIntervalRef.current)   clearInterval(powerIntervalRef.current);
+    if (resultTimeoutRef.current)    clearTimeout(resultTimeoutRef.current);
+    if (ballFlightRef.current)       clearTimeout(ballFlightRef.current);
+    if (inningBreakRef.current)      clearTimeout(inningBreakRef.current);
+    if (introCardRef.current)        clearTimeout(introCardRef.current);
+    if (speedBannerRef.current)      clearTimeout(speedBannerRef.current);
+    if (powerIntervalRef.current)    clearInterval(powerIntervalRef.current);
     if (accuracyIntervalRef.current) clearInterval(accuracyIntervalRef.current);
   }, []);
 
@@ -312,13 +319,21 @@ export default function GameScreen() {
 
     const power = lockedPowerRef.current;
     const zone = selectedZoneRef.current!;
+    const pitchType = selectedPitchRef.current!;
     const target = getZoneCenter(zone);
     setBallTarget(target);
     setShowBallFlight(true);
     playSfx('throw');
+
+    // Pre-compute speed so the banner is ready the instant the ball arrives.
+    const mph = calculatePitchSpeed(pitchType, power, profile.stats.speed);
+    setSpeedBannerMph(mph);
+    setSpeedBannerPitch(pitchType);
+
     if (ballFlightRef.current) clearTimeout(ballFlightRef.current);
     ballFlightRef.current = setTimeout(() => {
       setShowBallFlight(false);
+      setShowSpeedBanner(true);
       resolvePitch(power, accuracyScore);
     }, 420);
   }
@@ -386,6 +401,8 @@ export default function GameScreen() {
     pitchHistoryRef.current = [...pitchHistoryRef.current, record];
     setPitchHistory([...pitchHistoryRef.current]);
 
+    const pitchSpeedMph = calculatePitchSpeed(pitchType, powerScore, profile.stats.speed);
+
     const result: PitchResult = {
       outcome, powerScore, accuracyScore,
       basePoints: base, bonusPoints: bonus,
@@ -396,12 +413,17 @@ export default function GameScreen() {
       sequenceLabel: seq,
       strategyLabels: stratLabels,
       isPayoffPitch: isPayoffWin,
+      pitchSpeedMph,
     };
 
     phaseRef.current = 'result';
     setPhase('result');
     setLastResult(result);
     setShowResult(true);
+
+    // Dismiss speed banner after a short beat so it doesn't fight the result card.
+    if (speedBannerRef.current) clearTimeout(speedBannerRef.current);
+    speedBannerRef.current = setTimeout(() => setShowSpeedBanner(false), 900);
 
     if (isKO) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
@@ -569,6 +591,13 @@ export default function GameScreen() {
           toX={ballTarget.x}
           toY={ballTarget.y}
           pitchType={selectedPitch ?? undefined}
+        />
+
+        {/* Speed banner — slides up from the bottom of the scene after each pitch */}
+        <SpeedBanner
+          visible={showSpeedBanner}
+          pitchType={speedBannerPitch}
+          mph={speedBannerMph}
         />
       </View>
 
