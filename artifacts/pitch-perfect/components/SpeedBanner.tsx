@@ -67,12 +67,7 @@ export function SpeedBanner({ visible, pitchType, mph }: Props) {
 
 const styles = StyleSheet.create({
   wrap: {
-    position: 'absolute',
-    bottom: 10,
-    left: 0,
-    right: 0,
     alignItems: 'center',
-    zIndex: 30,
   },
   bar: {
     flexDirection: 'row',

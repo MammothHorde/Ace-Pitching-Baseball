@@ -593,12 +593,6 @@ export default function GameScreen() {
           pitchType={selectedPitch ?? undefined}
         />
 
-        {/* Speed banner — slides up from the bottom of the scene after each pitch */}
-        <SpeedBanner
-          visible={showSpeedBanner}
-          pitchType={speedBannerPitch}
-          mph={speedBannerMph}
-        />
       </View>
 
       {/* ── HUD (top absolute, above scene) ──────────────── */}
@@ -683,6 +677,16 @@ export default function GameScreen() {
       </View>
 
       {/* ── OVERLAYS ─────────────────────────────────────── */}
+
+      {/* Speed banner — sits at the scene bottom, above everything else */}
+      <View style={[styles.speedBannerAnchor, { top: SCENE_H - 58 }]} pointerEvents="none">
+        <SpeedBanner
+          visible={showSpeedBanner}
+          pitchType={speedBannerPitch}
+          mph={speedBannerMph}
+        />
+      </View>
+
       {lastResult && <PitchResultOverlay result={lastResult} visible={showResult} />}
 
       {/* Closer mode intro card */}
@@ -744,6 +748,12 @@ const styles = StyleSheet.create({
     left: 0, right: 0,
     alignItems: 'center',
     zIndex: 5,
+  },
+  speedBannerAnchor: {
+    position: 'absolute',
+    left: 0, right: 0,
+    alignItems: 'center',
+    zIndex: 65,
   },
 
   // Bottom panel
