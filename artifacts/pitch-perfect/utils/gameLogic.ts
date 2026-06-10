@@ -143,6 +143,7 @@ export interface StrategyEval {
   predictable: boolean;
   paintedCorner: boolean;
   downAndAway: boolean;
+  sameLocation: boolean;
 }
 
 /** Pure read of the strategy context — no randomness. */
@@ -162,6 +163,8 @@ export function readStrategy(
     predictable: isPredictable(history, pitchType),
     paintedCorner: CORNER_ZONES.has(zone),
     downAndAway: zone === DOWN_AND_AWAY,
+    // Batter sits on a location pitched back-to-back to the same spot.
+    sameLocation: prev ? prev.zone === zone : false,
   };
 }
 
@@ -214,17 +217,22 @@ export function calculatePitchOutcome(
     if (pitchType === 'cutter')    contactProb -= 0.05 + stats.spin * 0.004;
     if (strikes === 2) contactProb += 0.12;
     if (strikes === 0 && balls === 0) contactProb += 0.04;
-    if (zone === HEART_ZONE)      contactProb += 0.10;
-    if (EDGE_ZONES.has(zone))     contactProb -= 0.04;
-    if (!STRIKE_ZONE.has(zone))   contactProb -= 0.10;
+    // Per-batter zone alignment: contact tracks the batter's heat map directly.
+    // Zones 1-9 have heat data; off-plate shadow zones (11-14) return null.
+    // Neutral baseline .250 — hot zones add, cold zones subtract, proportional to avg.
+    const zoneStat = getZoneStat(batterIndex, zone);
+    if (zoneStat) {
+      contactProb += Math.max(-0.12, Math.min(0.16, (zoneStat.avg - 0.250) * 1.0));
+    } else {
+      contactProb -= 0.10; // off-plate corner shadow zones
+    }
     if (strat.paintedCorner)      contactProb -= 0.08;
     if (strat.downAndAway)        contactProb -= 0.04;
     if (strat.backwards) contactProb -= 0.10;
     if (strat.tunnel)    contactProb -= 0.10;
     if (strat.predictable) contactProb += 0.12;
-    // Hot zone bonus: +0.10 when pitch lands in batter's hot zone
-    const zoneStat = getZoneStat(batterIndex, zone);
-    if (zoneStat && zoneStat.avg > HOT_THRESHOLD) contactProb += 0.10;
+    // Back-to-back same location — batter sits on the spot and squares it up.
+    if (strat.sameLocation) contactProb += 0.10;
     contactProb = Math.max(0.04, Math.min(0.74, contactProb));
 
     if (Math.random() < contactProb) {
