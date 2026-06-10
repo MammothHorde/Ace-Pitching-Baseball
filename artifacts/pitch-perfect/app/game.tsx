@@ -334,7 +334,7 @@ export default function GameScreen() {
     const history = pitchHistoryRef.current;
     const outcome = calculatePitchOutcome(
       pitchType, zone, powerScore, accuracyScore,
-      profile.stats, curStr, curBalls, history,
+      profile.stats, curStr, curBalls, history, batterIndex,
     );
 
     let newStrikes = curStr;

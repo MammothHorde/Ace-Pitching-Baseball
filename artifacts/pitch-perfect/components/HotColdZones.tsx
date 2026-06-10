@@ -23,23 +23,26 @@ export const BATTERS: BatterProfile[] = [
   {
     name:  'Big Mac',
     scout: 'Pull hitter — attacks inside pitches',
-    zones: makeZones([0.271, 0.244, 0.196, 0.341, 0.318, 0.252, 0.308, 0.267, 0.211]),
+    // Hot zones (> .280) boosted +20%: Middle In .341→.409, Heart .318→.382, Down & In .308→.370
+    zones: makeZones([0.271, 0.244, 0.196, 0.409, 0.382, 0.252, 0.370, 0.267, 0.211]),
   },
   {
     name:  'Slap Jack',
     scout: 'Opposite-field hitter — goes with the pitch away',
-    zones: makeZones([0.187, 0.208, 0.249, 0.241, 0.276, 0.321, 0.233, 0.291, 0.336]),
+    // Hot zones (> .280) boosted +20%: Middle Away .321→.385, Down Middle .291→.349, Down & Away .336→.403
+    zones: makeZones([0.187, 0.208, 0.249, 0.241, 0.276, 0.385, 0.233, 0.349, 0.403]),
   },
   {
     name:  'High Fly',
     scout: 'High-ball hitter — elevate at your own risk',
-    zones: makeZones([0.315, 0.342, 0.298, 0.264, 0.257, 0.248, 0.213, 0.197, 0.178]),
+    // Hot zones (> .280) boosted +20%: Up & In .315→.378, Up & Middle .342→.410, Up & Away .298→.358
+    zones: makeZones([0.378, 0.410, 0.358, 0.264, 0.257, 0.248, 0.213, 0.197, 0.178]),
   },
 ];
 
 // ─── Heat-zone helpers ────────────────────────────────────────────────────────
 
-const HOT_THRESHOLD  = 0.280;
+export const HOT_THRESHOLD  = 0.280;
 const COLD_THRESHOLD = 0.220;
 
 export function zoneColor(avg: number): string {

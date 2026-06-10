@@ -1,4 +1,5 @@
 import { PitchType, ZoneId, PitchOutcome, PitcherStats, PitchRecord, CountSituation } from '@/constants/GameTypes';
+import { getZoneStat, HOT_THRESHOLD } from '@/components/HotColdZones';
 
 export const PITCH_INFO: Record<PitchType, {
   name: string;
@@ -173,6 +174,7 @@ export function calculatePitchOutcome(
   strikes: number,
   balls: number,
   history: PitchRecord[] = [],
+  batterIndex: number = 0,
 ): PitchOutcome {
   const acc = Math.pow(Math.max(0, accuracyScore), 0.6);
 
@@ -220,6 +222,9 @@ export function calculatePitchOutcome(
     if (strat.backwards) contactProb -= 0.10;
     if (strat.tunnel)    contactProb -= 0.10;
     if (strat.predictable) contactProb += 0.12;
+    // Hot zone bonus: +0.10 when pitch lands in batter's hot zone
+    const zoneStat = getZoneStat(batterIndex, zone);
+    if (zoneStat && zoneStat.avg > HOT_THRESHOLD) contactProb += 0.10;
     contactProb = Math.max(0.04, Math.min(0.74, contactProb));
 
     if (Math.random() < contactProb) {
