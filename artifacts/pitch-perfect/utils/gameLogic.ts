@@ -202,7 +202,7 @@ export function calculatePitchOutcome(
   const didSwing = Math.random() < swingProb;
 
   if (didSwing) {
-    let contactProb = 0.40;
+    let contactProb = 0.50;
     contactProb -= Math.max(0, (0.45 - Math.abs(powerScore - 0.60))) * 0.18;
     contactProb -= acc * 0.14;
     if (pitchType === 'curveball' || pitchType === 'slider') contactProb -= 0.07 + stats.spin * 0.007;
