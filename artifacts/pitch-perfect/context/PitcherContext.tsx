@@ -1,9 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { DEFAULT_SETTINGS, GameSettings, PitcherProfile, PitcherStats, PitchingStyle, PitchType } from '@/constants/GameTypes';
+import { CloserRecord, DEFAULT_SETTINGS, GameSettings, PitcherProfile, PitcherStats, PitchingStyle, PitchType, SaveResult } from '@/constants/GameTypes';
 import { UPGRADE_COSTS, PITCH_UNLOCK_COSTS, getAvailablePoints } from '@/utils/gameLogic';
 
 const STORAGE_KEY = '@pitcher_profile_v1';
+
+const DEFAULT_CLOSER_RECORD: CloserRecord = { saves: 0, holds: 0, blownSaves: 0 };
 
 const DEFAULT_PROFILE: PitcherProfile = {
   name: 'Rookie',
@@ -17,6 +19,7 @@ const DEFAULT_PROFILE: PitcherProfile = {
   statUpgradeCounts: { speed: 0, accuracy: 0, stamina: 0, spin: 0 },
   pitchingStyle: 'classic',
   settings: { ...DEFAULT_SETTINGS },
+  closerRecord: { ...DEFAULT_CLOSER_RECORD },
 };
 
 function clamp01(n: number): number {
@@ -31,7 +34,7 @@ interface PitcherContextType {
   setPitchingStyle: (style: PitchingStyle) => Promise<void>;
   settings: GameSettings;
   updateSettings: (partial: Partial<GameSettings>) => void;
-  recordGameResult: (score: number) => Promise<void>;
+  recordGameResult: (score: number, saveResult?: SaveResult) => Promise<void>;
   upgradeStat: (stat: keyof PitcherStats) => boolean;
   unlockPitch: (pitch: PitchType) => boolean;
   availablePoints: number;
@@ -97,14 +100,23 @@ export function PitcherProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const recordGameResult = useCallback(async (score: number) => {
+  const recordGameResult = useCallback(async (score: number, saveResult?: SaveResult) => {
     setProfile(prev => {
+      const prevRecord = prev.closerRecord ?? { ...DEFAULT_CLOSER_RECORD };
+      const newRecord: CloserRecord = saveResult === 'save'
+        ? { ...prevRecord, saves: prevRecord.saves + 1 }
+        : saveResult === 'hold'
+        ? { ...prevRecord, holds: prevRecord.holds + 1 }
+        : saveResult === 'blown_save'
+        ? { ...prevRecord, blownSaves: prevRecord.blownSaves + 1 }
+        : prevRecord;
       const updated: PitcherProfile = {
         ...prev,
         gamesPlayed: prev.gamesPlayed + 1,
         highScore: Math.max(prev.highScore, score),
         lifetimePoints: prev.lifetimePoints + score,
         level: Math.floor((prev.gamesPlayed + 1) / 3) + 1,
+        closerRecord: newRecord,
       };
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       return updated;

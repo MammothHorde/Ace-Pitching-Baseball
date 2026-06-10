@@ -75,6 +75,12 @@ export const DEFAULT_SETTINGS: GameSettings = {
   sfxVolume: 0.8,
 };
 
+export interface CloserRecord {
+  saves: number;
+  holds: number;
+  blownSaves: number;
+}
+
 export interface PitcherProfile {
   name: string;
   level: number;
@@ -87,6 +93,7 @@ export interface PitcherProfile {
   statUpgradeCounts: Record<keyof PitcherStats, number>;
   pitchingStyle?: PitchingStyle;
   settings?: GameSettings;
+  closerRecord?: CloserRecord;
 }
 
 export interface PitchResult {

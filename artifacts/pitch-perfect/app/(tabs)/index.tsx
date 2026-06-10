@@ -73,6 +73,27 @@ export default function HomeScreen() {
                 <Text style={styles.highScore}>{profile.highScore.toLocaleString()}</Text>
               </View>
             </View>
+            {/* Closer record */}
+            <View style={styles.closerRow}>
+              <Text style={styles.closerRowLabel}>CLOSER RECORD</Text>
+              <View style={styles.closerStats}>
+                <View style={styles.closerStat}>
+                  <Text style={styles.closerVal}>{profile.closerRecord?.saves ?? 0}</Text>
+                  <Text style={[styles.closerKey, { color: '#2ED573' }]}>SV</Text>
+                </View>
+                <View style={styles.closerDivider} />
+                <View style={styles.closerStat}>
+                  <Text style={styles.closerVal}>{profile.closerRecord?.holds ?? 0}</Text>
+                  <Text style={[styles.closerKey, { color: '#5AC8FA' }]}>HLD</Text>
+                </View>
+                <View style={styles.closerDivider} />
+                <View style={styles.closerStat}>
+                  <Text style={styles.closerVal}>{profile.closerRecord?.blownSaves ?? 0}</Text>
+                  <Text style={[styles.closerKey, { color: '#FF4757' }]}>BS</Text>
+                </View>
+              </View>
+            </View>
+
             <View style={styles.statsRow}>
               {[
                 { key: 'SPD', val: profile.stats.speed },
@@ -189,6 +210,28 @@ const styles = StyleSheet.create({
   highBlock: { alignItems: 'flex-end' },
   highLabel: { color: 'rgba(255,204,0,0.65)', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
   highScore: { color: '#FFCC00', fontSize: 24, fontWeight: '900' },
+  closerRow: {
+    marginTop: 14,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+  },
+  closerRowLabel: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  closerStats: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 0 },
+  closerStat: { flex: 1, alignItems: 'center', gap: 2 },
+  closerVal: { color: '#FFFFFF', fontSize: 22, fontWeight: '900' },
+  closerKey: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  closerDivider: { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.1)' },
   statsRow: { flexDirection: 'row', gap: 8, marginTop: 14 },
   statBox: {
     flex: 1, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 10,

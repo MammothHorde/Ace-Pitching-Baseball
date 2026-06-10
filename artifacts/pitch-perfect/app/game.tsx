@@ -444,7 +444,7 @@ export default function GameScreen() {
       setLead(newLead);
 
       if (blownSave) {
-        recordGameResult(finalScore);
+        recordGameResult(finalScore, 'blown_save');
         const scenario = closerScenarioRef.current;
         router.replace({
           pathname: '/results',
@@ -475,7 +475,7 @@ export default function GameScreen() {
           // 3 outs — successful save/hold
           const scenario = closerScenarioRef.current;
           const saveResult: SaveResult = scenario?.inning === 9 ? 'save' : 'hold';
-          recordGameResult(finalScore);
+          recordGameResult(finalScore, saveResult);
           router.replace({
             pathname: '/results',
             params: {
