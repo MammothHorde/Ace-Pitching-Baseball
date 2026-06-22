@@ -533,7 +533,12 @@ export default function GameScreen() {
 
       {/* ── SCENE (upper portion) ─────────────────────────── */}
       <View style={[styles.sceneArea, { height: SCENE_H }]}>
-        <BatterScene batterIndex={batterIndex} visibleTop={topOffset} />
+        <BatterScene
+          batterIndex={batterIndex}
+          visibleTop={topOffset}
+          outcome={lastResult?.outcome ?? null}
+          animTrigger={pitchHistory.length}
+        />
 
         {/* Sequence combo badge */}
         <View style={[styles.seqWrap, { top: topOffset + 4 }]}>
